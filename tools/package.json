@@ -1,0 +1,61 @@
+{
+  "name": "roli-tools",
+  "private": "true",
+  "main": "roli.js",
+  "scripts": {
+    "build": "./build.sh dev debug",
+    "start": "node ./dist/roli.js register-model my-model service /home/scott/roli/temp/chatbot/service/my-model.json"
+  },
+  "bin": {
+    "roli": "roli.js"
+  },
+  "keywords": [],
+  "author": "Roli.ai, Inc.",
+  "license": "MIT",
+  "description": "Roli Developer Tools",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rolijs/roli",
+    "directory": "packages/tools"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.0",
+    "@types/degit": "^2.8.3",
+    "@types/figlet": "^1.2.0",
+    "@types/inquirer": "^6.5.0",
+    "@types/mustache": "^4.0.1",
+    "@types/node": "^18.11.17",
+    "@types/node-emoji": "^1.8.1",
+    "rimraf": "^3.0.2",
+    "ts-node": "^9.0.0",
+    "@types/lodash": "^4.14.172",
+    "@types/flatbuffers": "^1.10.0",
+    "@types/jest": "^26.0.23",
+    "@types/websocket": "^1.0.1",
+    "jest": "^26.6.3",
+    "ts-jest": "^26.5.6"
+  },
+  "dependencies": {
+    "@firebase/app": "^0.9.4",
+    "@firebase/auth": "^0.21.4",
+    "@webcontainer/env": "^1.0.1",
+    "ascii-box": "^1.1.2",
+    "ascii-table3": "^0.9.0",
+    "chalk": "^4.1.0",
+    "cli-progress": "3.11.2",
+    "commander": "^9.4.0",
+    "crc-32": "^1.2.0",
+    "cross-fetch": "^3.1.5",
+    "figlet": "^1.4.0",
+    "firebase": "^9.8.2",
+    "flatbuffers": "2.0.4",
+    "inquirer": "^7.1.0",
+    "jszip": "^3.10.1",
+    "mustache": "^4.0.1",
+    "open": "^8.4.2",
+    "path": "^0.12.7",
+    "typescript": "4.7.2",
+    "lodash": "^4.17.21",
+    "websocket": "^1.0.34"
+  }
+}

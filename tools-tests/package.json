@@ -1,0 +1,28 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "private": "true",
+  "scripts": {
+    "build": "cd ./scripts && ./compile.sh",
+    "setup": "cd ./src && NODE_ENV=development ts-node ./setup.ts"
+  },
+  "keywords": [],
+  "author": "Roli.ai, Inc.",
+  "license": "MIT",
+  "description": "Tests for Roli Tools",
+  "dependencies": {
+    "@types/flatbuffers": "^1.10.0",
+    "@types/mustache": "^4.1.0",
+    "@types/node": "^14.0.13",
+    "cross-fetch": "^3.1.4",
+    "flatbuffers": "2.0.4",
+    "moment": "^2.29.1",
+    "mustache": "^4.1.0",
+    "rimraf": "^3.0.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^4.7.2"
+  },
+  "devDependencies": {
+    "roli-tools": "latest"
+  }
+}
