@@ -162,17 +162,17 @@ function transformDeclForClientCodeGen(outDir: string, preDeclDir: string, compi
     const declDir = path.join(outDir, 'decl');
     const outputFiles = transformTypeScript(preDeclDir, declDir, compilerOptions, ClientDeclTransformer, ['.ts' /* note: foo.d.ts has a .ts extension*/]);
     
-    // Add a createRoliClient declaration to the index.d.ts file
+    // Add a createRoliClient declaration to the config.d.ts file
     let found = false;
     outputFiles.findIndex((value, index) => {
-       if(value.endsWith("index.d.ts")) {
+       if(value.endsWith("config.d.ts")) {
            addCreateClientDeclaration(value);
            found = true;
        }
     });
     
     if(!found) {
-        throw new Error(logLocalError("Unable to complete client code generation because the index.d.ts file was not found"));
+        throw new Error(logLocalError("Unable to complete client code generation because the config.d.ts file was not found"));
     }
     
     return declDir;
@@ -211,10 +211,10 @@ export async function compile(progress: SingleBar | null, buildDir: string, serv
 
     // note: The ONLY reason this is required is because I need to add the createRoliClient declaration.
     // todo: Fix this.
-    if(!fs.existsSync(path.join(serviceDir, "index.ts")) && 
-       !fs.existsSync(path.join(serviceDir, "index.js")) && 
-       !fs.existsSync(path.join(serviceDir, "index.mjs"))) {
-        throw new Error(logLocalError(`Missing index. Services must contain a file named index.ts, index.js, or index.mjs at the root.`));
+    if(!fs.existsSync(path.join(serviceDir, "config.ts")) && 
+       !fs.existsSync(path.join(serviceDir, "config.js")) && 
+       !fs.existsSync(path.join(serviceDir, "config.mjs"))) {
+        throw new Error(logLocalError(`Missing config. Services must contain a file named config.ts, config.js, or config.mjs at the root.`));
     }
 
     const compilerOptions = <ts.CompilerOptions>{
