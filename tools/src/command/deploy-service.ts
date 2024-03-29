@@ -20,7 +20,7 @@ import {compile} from "../util/compiler";
 import JSZip from "jszip";
 import {recreateDir} from "../util/loud-fs";
 import {SingleBar} from "cli-progress";
-import { SERVICE_RUNTIME_PACKAGE_NAME } from "../constants";
+import {SERVICE_RUNTIME_PACKAGE_NAME} from "../constants";
 import {authEnabled, loginWithStoredCredentials} from "../service/auth";
 
 function compare(l: ServiceFileContent, r: ServiceFileContent) {
@@ -153,28 +153,26 @@ export async function executeDeployService(dir: string,
 
     // if the projectDir wasn't specified, start with the current directory and search upward for the project
     let serviceConfig: ServiceConfig | null = null;
-    if(!dir) {
+    if (!dir) {
         const dir = process.cwd();
         serviceConfig = ServiceConfig.tryFindAndOpen(dir);
     } else {
         serviceConfig = ServiceConfig.tryOpen(dir);
     }
 
-    if(!serviceConfig) {
+    if (!serviceConfig) {
         return false; //already logged
     }
-    
+
 
     let buildDir: string | null = null;
     let complete = false;
     try {
-        
-
         buildDir = path.join(serviceConfig.loadedFromDir, '.build');
 
         let progress = null;
 
-        if(showProgress) {
+        if (showProgress) {
             progress = new SingleBar({
                 format: `Compiling |` + chalk.blue('{bar}') + '| {percentage}%',
                 barCompleteChar: '\u2588',
@@ -188,7 +186,11 @@ export async function executeDeployService(dir: string,
         recreateDir(buildDir);
 
         logVerbose(`Compiling ${serviceConfig.loadedFromDir}...`);
-        const {schemaDir, declDir} = await compile(progress, buildDir, serviceConfig.loadedFromDir, serviceConfig.compilerOptions);
+        const {
+            schemaDir,
+            declDir,
+            authorizeDecorators
+        } = await compile(progress, buildDir, serviceConfig.loadedFromDir, serviceConfig.compilerOptions);
 
         logVerbose(`Compressing typedef files in ${declDir}...`);
         const compressedServiceTypeDefinitionsStr = await compressTypeDefinitionFiles(declDir);
@@ -230,7 +232,7 @@ export async function executeDeployService(dir: string,
         if (!force && serviceConfig.identity.checksum &&
             serviceConfig.identity.checksum === checksum) {
             if (!hasClassMappingChanges(serviceConfig, classMappings)) {
-                if(log)
+                if (log)
                     logOk("No changes found. Use --force  to override.");
                 return true;
             }
@@ -245,6 +247,7 @@ export async function executeDeployService(dir: string,
                 serviceConfig.name,
                 schemaFiles,
                 compressedServiceTypeDefinitionsStr,
+                authorizeDecorators,
                 classMappings,
                 serviceConfig.identity.serviceId,
                 serviceConfig.identity.lastClassId
@@ -279,7 +282,7 @@ export async function executeDeployService(dir: string,
 
             const message = `The "${serviceConfig.name}" service is now ${chalk.yellowBright("live")} at version ${serviceConfig.identity.serviceVersion}.`;
 
-            if(log)
+            if (log)
                 logOk(message);
 
             complete = true;
@@ -290,12 +293,11 @@ export async function executeDeployService(dir: string,
             return false;
         }
     } catch (e) {
-      logIfNotAlready(e);
-      return false;
+        logIfNotAlready(e);
+        return false;
     } finally {
         if (buildDir && fs.existsSync(buildDir)) {
-            if(complete || !debug)
-            {
+            if (complete || !debug) {
                 fs.rmSync(buildDir, {recursive: true, force: true});
             }
         }

@@ -4,7 +4,7 @@
   "main": "roli.js",
   "scripts": {
     "build": "./build.sh dev debug",
-    "start": "node ./dist/roli.js register-model my-model service /home/scott/roli/temp/chatbot/service/my-model.json"
+    "start": "node ./dist/roli.js deploy-service -d /home/scott/roli/temp/chatbot/service"
   },
   "bin": {
     "roli": "roli.js"

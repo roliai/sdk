@@ -8,6 +8,7 @@ import {logLocalError, logVerbose} from "../util/logging";
 import {getIdToken, logout} from "./auth";
 import {Unsigned} from "../util/unsigned";
 import {getAdminApiUrl, getIsEnterprise} from "../model/connection-info-file";
+import {AuthorizeDecorator} from "../util/transformer";
 
 //-- REQUEST
 
@@ -17,6 +18,7 @@ class DeployServiceRequest {
                 public language: number,
                 public serviceFiles: ServiceFileContent[],
                 public compressedServiceTypeDefinitionsStr: string,
+                public authorizeDecorators: AuthorizeDecorator[],
                 public serviceIdStr?: string,
                 public serviceClassMappings?: ServiceClassMapping[],
                 public lastClassId?: number) {
@@ -197,11 +199,12 @@ export class Admin {
                                serviceName: string,
                                serviceFiles: ServiceFileContent[],
                                compressedServiceTypeDefinitionsStr: string,
+                               authorizeDecorators: AuthorizeDecorator[],
                                serviceClassMappings?: ServiceClassMapping[],
                                serviceId?: string,
                                lastClassId?: number): Promise<DeployServiceResponse> {
         const req = new DeployServiceRequest(logContext, serviceName, ROLI_JAVASCRIPT_LANGUAGE,
-            serviceFiles, compressedServiceTypeDefinitionsStr, serviceId, serviceClassMappings, lastClassId);
+            serviceFiles, compressedServiceTypeDefinitionsStr, authorizeDecorators, serviceId, serviceClassMappings, lastClassId);
 
         try {
             let jsonObj = await this.makeServiceCall("POST",

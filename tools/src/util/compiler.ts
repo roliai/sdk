@@ -12,8 +12,9 @@ import {writeRuntime} from "./runtime.js";
 import {
     ClientDeclTransformer,
     JavaScriptServiceExecutionTransformer,
-    StageTransformer,
-    transformTypeScript
+    CreateStageTransformer,
+    transformTypeScript,
+    AuthorizeDecorator
 } from "./transformer";
 import {SingleBar} from "cli-progress";
 
@@ -22,6 +23,7 @@ export interface CompilerOutput {
     schemaDir: string;
     // The directory that contains the .d.ts files ready to be used for client-side code gen.
     declDir: string;
+    authorizeDecorators: AuthorizeDecorator[];
 }
 
 function writePackageJson(target: PathLike, obj: any) {
@@ -87,14 +89,14 @@ function compileTypeScript(buildDir: string,
 
     let emitResult = program.emit();
 
-    let allDiagnostics = ts
+    let allDiagnostics: ts.Diagnostic[] = ts
         .getPreEmitDiagnostics(program)
         .concat(emitResult.diagnostics);
 
     let errors: string[] = [];
     let warnings: string[] = [];
 
-    allDiagnostics.forEach(diagnostic => {
+    allDiagnostics.forEach((diagnostic: ts.Diagnostic) => {
         let target;
         if (diagnostic.category === ts.DiagnosticCategory.Error)
             target = errors;
@@ -133,8 +135,8 @@ function compileTypeScript(buildDir: string,
 
 interface StageResult {
     transformedFiles: string[];
-    buildDir: string;
     stageDir: string;
+    authorizeDecorators: AuthorizeDecorator[];
 }
 
 function stageForCompilation(buildDir: string, serviceDir: string, compilerOptions: ts.CompilerOptions): StageResult {
@@ -143,12 +145,16 @@ function stageForCompilation(buildDir: string, serviceDir: string, compilerOptio
 
     const stageDir = path.join(buildDir, 'stage');
 
-    const transformedFiles = transformTypeScript(serviceDir, stageDir, compilerOptions, StageTransformer, ['.ts', '.js', '.mjs']);
+    const authorizeDecorators: AuthorizeDecorator[] = [];
+    const stageTransformer = CreateStageTransformer(authorizeDecorators);
+
+    const transformedFiles = transformTypeScript(serviceDir, stageDir, compilerOptions,
+        stageTransformer, ['.ts', '.js', '.mjs']);
 
     writeRuntimeStub(stageDir, true); //needed for compilation
     writeServicePackageJson(stageDir); //needed for compilation
 
-    return {transformedFiles, buildDir, stageDir};
+    return {transformedFiles, stageDir, authorizeDecorators};
 }
 
 function addCreateClientDeclaration(indexDTsFile: string) {
@@ -162,17 +168,17 @@ function transformDeclForClientCodeGen(outDir: string, preDeclDir: string, compi
     const declDir = path.join(outDir, 'decl');
     const outputFiles = transformTypeScript(preDeclDir, declDir, compilerOptions, ClientDeclTransformer, ['.ts' /* note: foo.d.ts has a .ts extension*/]);
     
-    // Add a createRoliClient declaration to the config.d.ts file
+    // Add a createRoliClient declaration to the index.d.ts file
     let found = false;
     outputFiles.findIndex((value, index) => {
-       if(value.endsWith("config.d.ts")) {
+       if(!found && value.endsWith("config.d.ts")) {
            addCreateClientDeclaration(value);
            found = true;
        }
     });
     
     if(!found) {
-        throw new Error(logLocalError("Unable to complete client code generation because the config.d.ts file was not found"));
+        throw new Error(logLocalError("Unable to load the service type declarations because the config.d.ts output file was not found"));
     }
     
     return declDir;
@@ -209,10 +215,8 @@ export async function compile(progress: SingleBar | null, buildDir: string, serv
         throw new Error(logLocalError(`${serviceDir} is not a service. You may need to run 'roli init-service' in that directory.`));
     }
 
-    // note: The ONLY reason this is required is because I need to add the createRoliClient declaration.
-    // todo: Fix this.
-    if(!fs.existsSync(path.join(serviceDir, "config.ts")) && 
-       !fs.existsSync(path.join(serviceDir, "config.js")) && 
+    if(!fs.existsSync(path.join(serviceDir, "config.ts")) &&
+       !fs.existsSync(path.join(serviceDir, "config.js")) &&
        !fs.existsSync(path.join(serviceDir, "config.mjs"))) {
         throw new Error(logLocalError(`Missing config. Services must contain a file named config.ts, config.js, or config.mjs at the root.`));
     }
@@ -225,12 +229,17 @@ export async function compile(progress: SingleBar | null, buildDir: string, serv
         allowJs: options.allowJs,
         strict: options.strict,
         checkJs: false,
+        experimentalDecorators: true,
         skipLibCheck: true
     };
 
     // Transform the TS code, so it can be compiled successfully.
     logVerbose(`Staging for compilation...`);
-    const {transformedFiles, stageDir} = stageForCompilation(buildDir, serviceDir, compilerOptions);
+    const {
+        transformedFiles,
+        stageDir,
+        authorizeDecorators
+    } = stageForCompilation(buildDir, serviceDir, compilerOptions);
     progress?.increment();
 
     // Compile the TS into JS and .d.ts files
@@ -248,6 +257,6 @@ export async function compile(progress: SingleBar | null, buildDir: string, serv
     const schemaDir = transformJavaScriptForServiceExecution(outDir, preSchemaDir, compilerOptions);
     progress?.increment();
 
-    return {schemaDir, declDir};
+    return {schemaDir, declDir, authorizeDecorators};
 }
 

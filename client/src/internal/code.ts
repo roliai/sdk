@@ -47,29 +47,30 @@ export enum Code {
     Datastore_ServiceSourceCorrupted = 44,
     Datastore_ServiceIndexNotFound = 45,
     Datastore_ServiceSourceNotFound = 46,
-    Validator_ClientMustUpgrade = 50,
-    Validator_InvalidFlatbuffer = 51,
-    Validator_Forbidden = 52,
-    Validator_PrimaryKeyTooLarge = 53,
-    Validator_PrimaryKeyTooSmall = 54,
-    Validator_InvalidRequest = 55,
-    Innerspace_ConnectionFault = 58,
-    Innerspace_RequestTooLarge = 59,
-    Innerspace_Shutdown = 60,
-    Innerspace_UnableToResolveHostPort = 61,
-    Innerspace_NoEndpoints = 62,
-    Launcher_TimedOutWhileGettingService = 64,
-    Launcher_FailedToSpawnService = 65,
-    Service_ServiceDeleted = 67,
-    HttpCallFactory_InvalidHostPort = 68,
-    HttpCall_UnableToSetClientHostname = 69,
-    HttpCall_FailedToResolveHostname = 70,
-    HttpCall_UnableToConnect = 71,
-    HttpCall_UnableToPerformSslHandshake = 72,
-    HttpCall_FailedToWriteToServerStream = 73,
-    HttpCall_FailedToReadFromServerStream = 74,
-    Config_InvalidKey = 75,
-    Config_ValueNotFound = 76
+    Datastore_ServiceAuthorizationCorrupted = 47,
+    Validator_ClientMustUpgrade = 51,
+    Validator_InvalidFlatbuffer = 52,
+    Validator_Forbidden = 53,
+    Validator_PrimaryKeyTooLarge = 54,
+    Validator_PrimaryKeyTooSmall = 55,
+    Validator_InvalidRequest = 56,
+    Innerspace_ConnectionFault = 59,
+    Innerspace_RequestTooLarge = 60,
+    Innerspace_Shutdown = 61,
+    Innerspace_UnableToResolveHostPort = 62,
+    Innerspace_NoEndpoints = 63,
+    Launcher_TimedOutWhileGettingService = 65,
+    Launcher_FailedToSpawnService = 66,
+    Service_ServiceDeleted = 68,
+    HttpCallFactory_InvalidHostPort = 69,
+    HttpCall_UnableToSetClientHostname = 70,
+    HttpCall_FailedToResolveHostname = 71,
+    HttpCall_UnableToConnect = 72,
+    HttpCall_UnableToPerformSslHandshake = 73,
+    HttpCall_FailedToWriteToServerStream = 74,
+    HttpCall_FailedToReadFromServerStream = 75,
+    Config_InvalidKey = 76,
+    Config_ValueNotFound = 77
 }
 
 export function getCodeName(code: Code) {
@@ -166,6 +167,8 @@ export function getCodeName(code: Code) {
             return 'Datastore_ServiceIndexNotFound';
         case Code.Datastore_ServiceSourceNotFound:
             return 'Datastore_ServiceSourceNotFound';
+        case Code.Datastore_ServiceAuthorizationCorrupted:
+            return 'Datastore_ServiceAuthorizationCorrupted';
         case Code.Validator_ClientMustUpgrade:
             return 'Validator_ClientMustUpgrade';
         case Code.Validator_InvalidFlatbuffer:
