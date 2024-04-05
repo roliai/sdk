@@ -3,8 +3,8 @@
   "private": "true",
   "main": "roli.js",
   "scripts": {
-    "build": "./build.sh dev debug",
-    "start": "node ./dist/roli.js register-model my-model service /home/scott/roli/temp/chatbot/service/my-model.json"
+    "build": "./build.sh managedcloud debug",
+    "start": "node ./dist/roli.js generate-client -d /home/scott/roli/temp/chatbot/client chatbot"
   },
   "bin": {
     "roli": "roli.js"
@@ -15,8 +15,8 @@
   "description": "Roli Developer Tools",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rolijs/roli",
-    "directory": "packages/tools"
+    "url": "https://github.com/roliai/sdk",
+    "directory": "tools"
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.0",

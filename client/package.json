@@ -8,8 +8,8 @@
   "description": "Roli Client Library for JavaScript",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rolijs/roli",
-    "directory": "packages/client"
+    "url": "https://github.com/roliai/sdk",
+    "directory": "client"
   },
   "types": "./dist/esm/public/index.d.ts",
   "exports": {

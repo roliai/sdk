@@ -333,10 +333,13 @@ async function writeTypeDefinitions(compressedServiceTypeDefinitionsStr: string,
 
     const files = zip.files;
     const fileNames = Object.keys(files);
-    for(const relativePath of fileNames) {
+    for(let relativePath of fileNames) {
         const archive = files[relativePath];
         if(archive.dir)
             continue; //don't create empty directories
+
+        if(relativePath.endsWith("config.d.ts"))
+            relativePath = relativePath.replace("config", "index");
 
         const fullPath = path.resolve(packageDir, relativePath);
         const dirPath = path.dirname(fullPath);
