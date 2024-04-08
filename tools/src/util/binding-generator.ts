@@ -184,9 +184,6 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
 
         clientExports.push(name);
     }
-
-    // THIS IS WHERE I STOPPED
-    // See current.txt for the things that's left after this.
     
     let endpointClassRegistrations = [];
     let endpointClasses = [];
