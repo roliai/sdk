@@ -249,6 +249,17 @@ export class RoliClient {
     }
 
     /**
+     * Sets the OAuth access token to use for all future service calls. If the token is different from the previous
+     * token, all api connections will be closed.
+     *
+     * @see https://auth0.com/docs/secure/tokens/access-tokens
+     * @param token - The access token to use for all future calls.
+     */
+    public setAccessToken(token: string | null) {
+        this.serviceContext.setAccessToken(token);
+    }
+
+    /**
      * (async) Retrieves an existing instance of a Data-derived class from the service and returns it.
      * @param dataType - The type of the object to get. E.g. The Player class that extends Data.
      * @param primaryKey - The primary key of the object to get.
@@ -337,7 +348,7 @@ export class RoliClient {
     }
 
     /**
-     * Removes a event listener so it is no longer handled by this client. Note: This does not unsubscribe this client from the event all together, this mearly removes the listener function handler. (note: A event subscription can have multiple listeners)
+     * Removes an event listener, so it is no longer handled by this client. Note: This does not unsubscribe this client from the event all together, this mearly removes the listener function handler. (note: A event subscription can have multiple listeners)
      * @param { <TS> } source - The source Data or Endpoint that was passed to the previous subscribeEvent call.
      * @param {EventConstructor<<TM>>} eventType - The type of the event to remove the listener from.
      * @param {EventListener} listener - The function instance you no longer wish to be called.

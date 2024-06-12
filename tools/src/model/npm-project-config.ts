@@ -20,8 +20,14 @@ const getDirectories = (source: string) =>
 export class NpmProjectConfig {
     constructor(
         public loadedFromDir: string,
-        public name: string | null) {
+        public name: string | null,
+        public dependencies: {} | null) {
         requiresTruthy('loadedFromDir', loadedFromDir);
+    }
+
+    public get hasReact() {
+        // @ts-ignore
+        return this.dependencies["react"] !== undefined;
     }
 
     public get configFile() {
@@ -69,7 +75,7 @@ export class NpmProjectConfig {
             logWarning(`${file} missing 'name'`);
         }
 
-        return new NpmProjectConfig(dir, fileObj.name);
+        return new NpmProjectConfig(dir, fileObj.name, fileObj.dependencies);
     }
 
     public static tryFindAndOpen(startDir: string): NpmProjectConfig | null {

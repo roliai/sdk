@@ -36,7 +36,7 @@ export function logDetails(msg: string, force: boolean = false) {
 
 export function logLocalError(msg: string) {
     msg = msg.replace("Error:", "").trim();
-    console.log(getColor(chalk.redBright, "Error: ") + msg);
+    console.error(getColor(chalk.redBright, "Error: ") + msg);
     return msg;
 }
 

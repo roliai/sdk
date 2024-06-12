@@ -8,10 +8,15 @@
     ".": {
       "import": "./esm/index.js",
       "require": "./cjs/index.js"
+    },
+    "./react": {
+      "import": "./deps/{{{REACT_PACKAGE_NAME}}}/esm/index.js",
+      "require": "./deps/{{{REACT_PACKAGE_NAME}}}/csj/index.js"
     }
   },
   "dependencies": {
-    "{{{CLIENT_PACKAGE_NAME}}}": "file:./deps/{{{CLIENT_PACKAGE_NAME}}}"
+    "{{{CLIENT_PACKAGE_NAME}}}": "file:./deps/{{{CLIENT_PACKAGE_NAME}}}",
+    "{{{REACT_PACKAGE_NAME}}}": "file:./deps/{{{REACT_PACKAGE_NAME}}}"
   },
   "devDependencies": {},
   "scripts": {}

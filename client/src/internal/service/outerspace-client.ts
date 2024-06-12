@@ -1,4 +1,4 @@
-import __ws, {ICloseEvent} from "websocket";
+import __ws, {ICloseEvent, w3cwebsocket} from "websocket";
 const {w3cwebsocket: W3CWebSocket} = __ws;
 import {requiresTruthy} from "../util/requires.js"
 import {logError, sysLogError, sysLogVerbose, sysLogWarn} from "../util/logging.js";
@@ -34,6 +34,7 @@ export class OuterspaceClientFactory {
     constructor(private readonly baseUrl: string,
         private readonly admin: boolean,        
         private readonly authKey: string,
+        private readonly accessToken: string | null,
         private readonly messageHandler: IMessageHandler) {
         requiresTruthy('baseUrl', baseUrl);
         requiresTruthy('authKey', authKey);
@@ -47,12 +48,21 @@ export class OuterspaceClientFactory {
         else if(url.protocol === "https:") {
             url.protocol = "wss:";
         }
-        let wsUrl = `${url.toString()}?${this.admin ? /** This is not misspelled -> */ 'admn_key' : 'user_key'}=${this.authKey}`;
+        let wsUrl = `${url.toString()}?${this.admin ? 'admn_key' : 'user_key'}=${this.authKey}`;
         return new Promise<OuterspaceClient>((resolve, reject) => {
-            let connection = new W3CWebSocket(wsUrl);
+            const headers = {};
+
+            let connection: w3cwebsocket;
+            if(this.accessToken) {
+                connection = new W3CWebSocket(wsUrl, this.accessToken);
+            } else {
+                connection = new W3CWebSocket(wsUrl);
+            }
+
             //This says this should work in the browser.
             // https://hpbn.co/websocket/#wsab
             connection.binaryType = 'arraybuffer';
+
             connection.onerror = (e: Error) => {
                 console.error(`W3CWebSocket connection error: ${e.name}\nmessage:${e.message}\nstack:${e.stack}`);
             };

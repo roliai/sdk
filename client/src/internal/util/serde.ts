@@ -6,7 +6,7 @@ import {Unsigned, UnsignedOne, UnsignedZero} from "./unsigned.js";
 import {getEnableVerboseLogging, logError, logVerbose, sysLogError} from "./logging.js";
 import {getCodeName, Code} from "../code.js";
 import {DataProto} from "../protocol/data-proto.js";
-import {ErrorCodeResponseProto} from "../protocol/error-code-response-proto.js";
+import {ErrorResponseProto} from "../protocol/error-response-proto.js";
 import {NumberValueProto} from "../protocol/number-value-proto.js";
 import {UndefinedValueProto} from "../protocol/undefined-value-proto.js";
 import {ApiUserResponseProto} from "../protocol/api-user-response-proto.js";
@@ -592,12 +592,13 @@ export class ResponseReader {
             case UserResponseUnionProto.NONE: {
                 throw new Error(logError(logContext, 'Response contained invalid data because the response type was NONE'));
             }
-            case UserResponseUnionProto.ErrorCodeResponseProto: {
-                const responseProto = userResponseProto.value(new ErrorCodeResponseProto());
+            case UserResponseUnionProto.ErrorResponseProto: {
+                const responseProto = userResponseProto.value(new ErrorResponseProto());
                 if (!responseProto)
-                    throw new Error(logError(logContext, 'ErrorCode response was invalid because it was empty'));
+                    throw new Error(logError(logContext, 'ErrorResponse response was invalid because it was empty'));
                 const code = <Code>responseProto.errorCode();
-                return UserResponse.createPlatformException<T>(new PlatformException(code, getCodeName(code)), consoleLog);
+                const when = responseProto.when() ? responseProto.when() : null;
+                return UserResponse.createPlatformException<T>(new PlatformException(code, getCodeName(code), when), consoleLog);
             }
             case UserResponseUnionProto.ExceptionResponseProto: {
                 const responseProto = userResponseProto.value(new ExceptionResponseProto());

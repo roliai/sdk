@@ -30,9 +30,9 @@ export function createLoginCommand(before: any) : Command {
             }
 
             if (await executeLogin(opts.loginFile, true, opts.anonymous)) {
-                process.exitCode = 0;
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }

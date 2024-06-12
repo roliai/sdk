@@ -11,9 +11,9 @@ export function createGetConnectionInfoCommand(before: any): Command {
                 before();
 
             if (executeGetConnectionInfo()) {
-                process.exitCode = 0;
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }

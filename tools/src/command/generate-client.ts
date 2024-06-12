@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import {bold, getColor, logLocalError, logOk, logRemoteError, logVerbose, logWarning} from "../util/logging";
-import fs from "fs";
 import path from 'path';
 import {Command} from "commander";
 import {AdminSingleton} from "../service/admin";
@@ -16,52 +15,7 @@ import inquirer from "inquirer";
 import { NpmProjectConfig } from "../model/npm-project-config";
 import {authEnabled, loginWithStoredCredentials} from "../service/auth";
 import { Unsigned, UnsignedOne } from "../util/unsigned";
-
-const CLIENT_LIB_NAME = "roli-client";
-
-function addServicePackageDependency(packageJsonFile: string, servicePackageName: string, relRootPath: string) {
-
-    let packageJsonStr = fs.readFileSync(packageJsonFile, {encoding: "utf8"});
-    let indentionRule = getPackageJsonIndentionRule(packageJsonStr);
-    let packageJsonObj = JSON.parse(packageJsonStr);
-
-    if (!packageJsonObj.hasOwnProperty("dependencies")) {
-        packageJsonObj.dependencies = {};
-    }
-
-    packageJsonObj.dependencies[CLIENT_LIB_NAME] = "latest";
-    packageJsonObj.dependencies[servicePackageName] = `file:./${relRootPath}`
-
-    const indent = indentionRule.spaces ? indentionRule.count : "\t";
-    let updatedPackageJsonStr = JSON.stringify(packageJsonObj, null, indent);
-    fs.writeFileSync(packageJsonFile, updatedPackageJsonStr);
-}
-
-function getPackageJsonIndentionRule(jsonStr: string): any {
-    const def = {spaces: true, count: 2};
-    const re = /^(\s*)"name"/m;
-    let match = re.exec(jsonStr);
-    if (!match) {
-        logWarning("Unknown indention found in package.json, using npm default of 2 spaces");
-        return def;
-    }
-    const spaceCount = (match[1].match(/ /g) || []).length;
-    const tabCount = (match[1].match(/\t/g) || []).length;
-    if (spaceCount && tabCount) {
-        logWarning("Inconsistent indention found in package.json, using npm default of 2 spaces");
-        return def;
-    }
-    if (!spaceCount && !tabCount) {
-        logWarning("Unknown indention found in package.json, using npm default of 2 spaces");
-        return def;
-    }
-
-    if (spaceCount)
-        return {spaces: true, count: spaceCount};
-
-    if (tabCount)
-        return {spaces: false};
-}
+import {addServicePackageDependency} from "../util/package-json.js";
 
 export function createGenerateClientCommand(before: any): Command {
     return new Command('generate-client')
@@ -69,6 +23,7 @@ export function createGenerateClientCommand(before: any): Command {
         .option("-v, --version <version>", "The deployed version of the service to generate client code for. Left unspecified, the latest service version will be used.")
         .option("-d, --dir <directory>", "The directory containing a client NPM project that you wish to generate the client in. This wires up the client code to talk to the service.")
         .option("-ni, --no-install", "Don't ask to run client package installation after generating client code for the first time in a given client code project.")
+        .option("--react", "Override React detection and enable Roli React support")
         .description('Generates client code that lets a client NPM project talk to a service hosted on Roli.')
         .action(async function (serviceName: string, opts: any) {
             if (before)
@@ -85,11 +40,11 @@ export function createGenerateClientCommand(before: any): Command {
                 serviceName,
                 opts.version,
                 install,
-                true)) {
-
-                process.exitCode = 0;
+                true,
+                opts.react)) {
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }
@@ -121,7 +76,8 @@ export async function executeGenerateClient(
         serviceName: string | null,
         versionStr: string | null,
         install: boolean,
-        log: boolean
+        log: boolean,
+        react: boolean
     ): Promise<boolean> {
 
     if(authEnabled() && !await loginWithStoredCredentials())
@@ -158,7 +114,7 @@ export async function executeGenerateClient(
         }
     
         for(const bindingConfig of bindingConfigs) {
-            if(!await generateClient(projectConfig, bindingConfig.serviceName, null, install, log))
+            if(!await generateClient(projectConfig, bindingConfig.serviceName, null, install, log, react))
                 return false; // already logged
         }
         
@@ -172,7 +128,7 @@ export async function executeGenerateClient(
                 return false;
             }
         }
-        return await generateClient(projectConfig, serviceName, version, install, log);
+        return await generateClient(projectConfig, serviceName, version, install, log, react);
     }
 }
 async function generateClient(
@@ -180,7 +136,8 @@ async function generateClient(
     serviceName: string, 
     serviceVersion: Unsigned | null,
     install: boolean,
-    log: boolean) : Promise<boolean> {
+    log: boolean,
+    forceReact: boolean) : Promise<boolean> {
 
     if(!serviceName) {
         logLocalError("The service name is missing and required.");
@@ -209,16 +166,6 @@ async function generateClient(
 
     logVerbose('Service index retrieved and validated')
 
-    const regenCommand = `roli generate-client . ${serviceName}`;
-
-    const {clientPackageName, clientPackageDir, wasUpdate} =
-        createOrUpdateBinding(logContext, userKey, serviceIndex, regenCommand, projectConfig.loadedFromDir, 
-            response.compressedServiceTypeDefinitionsStr);
-
-    logVerbose(`Service package code written`);
-    addServicePackageDependency(projectConfig.configFile, clientPackageName, clientPackageDir);
-    logVerbose('Project updated');
-    
     const updatedServiceVersion = Unsigned.fromLong(serviceIndex.serviceVersion());
     const connectedServiceVersion = Unsigned.tryParse(response.serviceVersionStr)!;
 
@@ -226,6 +173,22 @@ async function generateClient(
         logLocalError(`Unexpectedly the index version ${updatedServiceVersion} and the service version ${connectedServiceVersion} were different`);
         return false;
     }
+
+    const regenCommand = `roli generate-client . ${serviceName}`;
+
+    let react = forceReact;
+    if(!react && projectConfig.hasReact) {
+        react = true;
+        logVerbose("Target NPM project has a React dependency, installing Roli React support");
+    }
+
+    const {servicePackageName, servicePackageDir, wasUpdate} =
+        await createOrUpdateBinding(logContext, userKey, serviceIndex, regenCommand, projectConfig.loadedFromDir,
+            response.compressedServiceTypeDefinitionsStr, react);
+
+    logVerbose(`Service package code written`);
+    addServicePackageDependency(projectConfig.configFile, servicePackageName, servicePackageDir);
+    logVerbose('Project updated');
 
     path.resolve()
     const for_ = `for the ${bold(getColor(chalk.magentaBright, serviceName))} service version ${bold(getColor(chalk.greenBright, `${updatedServiceVersion}`))} in the project located at ${getColor(chalk.yellowBright, projectConfig.loadedFromDir)}.`;

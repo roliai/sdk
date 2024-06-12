@@ -5,14 +5,14 @@ import {SERVICE_CLIENT_PACKAGE_NAME, SERVICE_RUNTIME_PACKAGE_NAME} from "../cons
 import fs, {PathLike} from "fs";
 import {createDir} from "./loud-fs";
 import {ErrorAlreadyLogged, logLocalError, logVerbose} from "./logging";
+import {AuthorizeAssignment, PermissionAssignment} from "../service/admin";
+import {CallAuthorization, ObjectPermission, Permission} from "./client-decorator-eval";
 
+const permissionsDecoratorName = "permissions";
 const authorizeDecoratorName = 'authorize';
 
 // The server owns the remote object and the client marshals calls to it via a proxy.
 const CallableBaseClasses = ['Endpoint', 'Session'];
-
-// Classes that are managed by Roli
-const ManagedBaseClasses: string[] = ['Endpoint', 'Session', 'Data', 'Event'];
 
 // Classes that have an underlying RocksDB database object
 const ObjectBaseClasses: string[] = ['Endpoint', 'Session', 'Data'];
@@ -42,10 +42,22 @@ class TransformerError {
 
 let __code = 1;
 const ERR = {
-    // Note: don't ever change the ordering of these, add new items to the bottom.
-    CallableGetAccessor: new TransformerError(__code++, 'The get accessor {0}.{1} is invalid. {2}s cannot have get/set accessors. Use a regular class method instead.'),
-    CallableSetAccessor: new TransformerError(__code++, 'The set accessor {0}.{1} is invalid. {2}s cannot have get/set accessors. Use a regular class method instead.'),
-    InvalidDecoratorArgument: new TransformerError(__code++, 'The decorator {0} contains an invalid argument.'),
+    // Notes:
+    // 1. Don't ever change the ordering of these, add new items to the bottom.
+    // 2. The number at the end of the keys denote the number of string format arguments.
+    CallableGetAccessor_3: new TransformerError(__code++, 'The get accessor {0}.{1} is invalid. {2}s cannot have get/set accessors. Use a regular class method instead.'),
+    CallableSetAccessor_3: new TransformerError(__code++, 'The set accessor {0}.{1} is invalid. {2}s cannot have get/set accessors. Use a regular class method instead.'),
+    PermissionsDecoratorWrongClass_1: new TransformerError(__code++, 'The @' + permissionsDecoratorName + ' decorator cannot be applied to the class {0}. Only classes that derive from Endpoint, Session, or Data can have permissions.'),
+    PermissionsDecoratorOnMethod_0: new TransformerError(__code++, 'The @' + permissionsDecoratorName + ' decorator must be applied to a class, not a method.'),
+    AuthorizeDecoratorOnWrongClass_2: new TransformerError(__code++, 'The @' + authorizeDecoratorName + ' decorator cannot be applied to the method {0}.{1}. Only methods in classes that derive from Endpoint or Session can be authorized.'),
+    AuthorizeDecoratorOnClass_0: new TransformerError(__code++, 'The @' + authorizeDecoratorName + ' decorator must be applied to a method, not a class.'),
+    ObjectPermissionsInvalid_0: new TransformerError(__code++, 'The @' + permissionsDecoratorName + ' decorator has empty, zero, or invalid object permissions.'),
+    ObjectPermissionsNoAccessCombined_0: new TransformerError(__code++, "The @" + permissionsDecoratorName + " decorator has an invalid permission value. NoAccess cannot be combined with other permissions."),
+    DuplicatePermissionsDecorator_1: new TransformerError(__code++, 'The class {0} has too many @' + permissionsDecoratorName + ' decorators. Only a single @' + permissionsDecoratorName + ' decorator is allowed per class.'),
+    DuplicateAuthorizeDecorator_2: new TransformerError(__code++, 'The method {0}.{1} has too many @' + authorizeDecoratorName + ' decorators. Only a single @' + authorizeDecoratorName + ' decorator is allowed per method.'),
+    InvalidPermissionsScope_0: new TransformerError(__code++, "The @" + permissionsDecoratorName + " decorator has an invalid scope. Scopes must be non-empty and contain no whitespace."),
+    InvalidAuthorizeScope_0: new TransformerError(__code++, "The @" + authorizeDecoratorName + " decorator has an invalid scope. Scopes must be non-empty and contain no whitespace."),
+    UnableToEvalDecoratorArguments_1: new TransformerError(__code++, 'Unable to eval decorator arguments. Error: {0}')
 }
 
 function addTransformerError(node: ts.Node, error: TransformerError, ...values: string[]) {
@@ -84,146 +96,261 @@ function consumeAndPrintTransformerErrors() {
     TRANSFORMER_ERRORS.clear();
 }
 
-export interface AuthorizeDecorator {
-    className: string;
-    roles: string[];
-    methodName?: string;
-    fileName: string;
-    fileLine: number;
-}
-
 function getDecoratorName(decorator: ts.Decorator): string {
     const outerExpression = decorator.expression as ts.CallExpression;
     const identifier = outerExpression.expression as ts.Identifier;
     return identifier.escapedText.toString();
 }
 
-function getAuthorizeDecoratorRoles(decorator: ts.Decorator): string[] {
-    const outerExpression = decorator.expression as ts.CallExpression;
+const AllPermission = Permission.CreateReadWriteDelete;
 
-    const roles: string[] = [];
-    if (outerExpression.arguments) {
-        for (const arg of outerExpression.arguments) {
-            switch (arg.kind) {
-                case ts.SyntaxKind.ArrayLiteralExpression:
-                    const argAr = arg as ts.ArrayLiteralExpression;
-                    for (const arArg of argAr.elements) {
-                        switch (arArg.kind) {
-                            case ts.SyntaxKind.StringLiteral:
-                                roles.push((arArg as ts.StringLiteral).text);
-                                break;
-                            default:
-                                const name = getDecoratorName(decorator);
-                                addTransformerError(decorator, ERR.InvalidDecoratorArgument, name);
-                                break;
-                        }
-                    }
-                    break;
-                case ts.SyntaxKind.StringLiteral:
-                    roles.push((arg as ts.StringLiteral).text);
-                    break;
-                default:
-                    const name = getDecoratorName(decorator);
-                    addTransformerError(decorator, ERR.InvalidDecoratorArgument, name);
-                    break;
-            }
-        }
-    }
-
-    return roles;
+function validScope(s: any) {
+    return typeof s === "string" && s.length > 0 && (s.search(/\s/) == -1);
 }
 
-export function CreateStageTransformer(authorizeDecorators: AuthorizeDecorator[]) {
+function validateObjectPermission(o: ObjectPermission, node: ts.Node): boolean {
+    if (! o.p || o.p.valueOf() === 0 || o.p > AllPermission) {
+        addTransformerError(node, ERR.ObjectPermissionsInvalid_0);
+        return false; // Invalid
+    }
+
+    if (o.p % 2 !== 0 && o.p > 1) {
+        addTransformerError(node, ERR.ObjectPermissionsNoAccessCombined_0);
+        return false; // NoAccess cannot be combined.
+    }
+
+    const scopesOk = o.scopes != null &&
+        ((Array.isArray(o.scopes) && o.scopes.length > 0 && o.scopes.every((s, n) => validScope(s))) ||
+            // @ts-ignore
+            (validScope(o.scopes)));
+
+    if(!scopesOk) {
+        addTransformerError(node, ERR.InvalidPermissionsScope_0);
+        return false;
+    }
+
+    return true;
+}
+
+function validateCallAuthorization(c: CallAuthorization, node: ts.Node): boolean {
+    const scopesOk = c.scopes != null &&
+        ((Array.isArray(c.scopes) && c.scopes.length > 0 && c.scopes.every((s, n) => validScope(s))) ||
+            // @ts-ignore
+            (validScope(c.scopes)));
+
+    if(!scopesOk) {
+        addTransformerError(node, ERR.InvalidAuthorizeScope_0);
+        return false;
+    }
+
+    return true;
+}
+
+let ClientDecoratorEvalCode: string | null = null;
+function getClientDecoratorEvalCode() {
+    if(!ClientDecoratorEvalCode) {
+        const clientDecoratorEvalCode = path.join(__dirname, "client-decorator-eval.js").toString();
+        ClientDecoratorEvalCode = fs.readFileSync(clientDecoratorEvalCode).toString();
+    }
+    return ClientDecoratorEvalCode;
+}
+
+function evalDecoratorArguments(expressionText: string) : any {
+    const pre = getClientDecoratorEvalCode();
+    const code = `${pre}
+    ${expressionText}`;
+    return eval(code);
+}
+
+///////////////////////////////////////////////////
+
+function tryGetPermissionsDecoratorArguments(decorator: ts.Decorator): ObjectPermission[] | null {
+    let retval;
+    try {
+        retval = evalDecoratorArguments(decorator.expression.getFullText());
+    } catch (e: any) {
+        addTransformerError(decorator, ERR.UnableToEvalDecoratorArguments_1, e.message);
+        return null;
+    }
+    if (Array.isArray(retval)) {
+        if (retval.every((p) => validateObjectPermission(p, decorator))) {
+            return retval;
+        } else {
+            return null; // already logged
+        }
+    } else {
+        if (validateObjectPermission(retval, decorator)) {
+            return [retval as ObjectPermission];
+        } else {
+            return null; // already logged
+        }
+    }
+}
+
+function tryGetAuthorizeDecoratorArguments(decorator: ts.Decorator): CallAuthorization[] | null {
+    let retval;
+    try {
+        retval = evalDecoratorArguments(decorator.expression.getFullText());
+    } catch (e: any) {
+        addTransformerError(decorator, ERR.UnableToEvalDecoratorArguments_1, e.message);
+        return null;
+    }
+    if (Array.isArray(retval)) {
+        if (retval.every((c) => validateCallAuthorization(c, decorator))) {
+            return retval;
+        } else {
+            return null; // already logged
+        }
+    } else {
+        if (validateCallAuthorization(retval, decorator)) {
+            return [retval as CallAuthorization];
+        } else {
+            return null; // already logged
+        }
+    }
+}
+
+function getClassName(node: ts.Node) {
+    const classDecl = node as ts.ClassDeclaration;
+    return classDecl.name?.text!;
+}
+
+function getMethodName(node: ts.Node): string {
+    const methodDecl = node as ts.MethodDeclaration;
+    return (methodDecl.name as ts.Identifier).text;
+}
+
+function getLocInfo(sourceFile: ts.SourceFile, node: ts.Node): { fileLine: number, fileColumn: number } {
+    const location = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+    return {fileColumn: location.character, fileLine: location.line + 1};
+}
+
+const ClassMethodHasAuthorizeDecorator = new Set();
+const ClassHasPermissionsDecorator = new Set();
+
+export function CreateStageTransformer(permissionAssignments: PermissionAssignment[],
+                                       authorizeAssignments: AuthorizeAssignment[]) {
     return (program: ts.Program) => {
         const transformerFactory: ts.TransformerFactory<ts.SourceFile> = context => {
             return (sourceFile: ts.SourceFile) => {
                 const visitor = (node: ts.Node): ts.Node => {
 
-                    // Doctor the path so compilation will work locally
-                    if (node.kind === ts.SyntaxKind.StringLiteral &&
-                        node.parent &&
-                        node.parent.kind === ts.SyntaxKind.ImportDeclaration) {
-                        const literal = node as ts.StringLiteral;
-                        const dir = modPath.dirname(sourceFile.fileName);
-                        const updated = getUpdatedPath(dir, literal.text);
-                        if (updated) {
-                            return context.factory.createStringLiteral(updated);
-                        }
-                    }
-
-                    if (node.kind === ts.SyntaxKind.Decorator &&
-                        getDecoratorName(node as ts.Decorator) === authorizeDecoratorName) {
-
-                        // Authorize class decorator
-                        if (node.parent.kind === ts.SyntaxKind.ClassDeclaration) {
-                            // Note: Authorize decorators are only supported on Sessions and Endpoints (for now)
-                            // But it makes sense to let Admin return that error otherwise it would just fail silently.
-                            const baseClass = tryGetBaseClass(ManagedBaseClasses, node.parent);
-                            if (baseClass) {
-                                const classDecl = node.parent as ts.ClassDeclaration;
-                                const className = classDecl.name?.text!;
-                                const roles = getAuthorizeDecoratorRoles(node as ts.Decorator);
-
-                                authorizeDecorators.push({
-                                    className: className,
-                                    roles: roles,
-                                    fileName: sourceFile.fileName,
-                                    fileLine: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1
-                                })
-
-                                // Remove the decorators because they can cause side effects.
-                                return <ts.Node><unknown>undefined;
+                        // Doctor the path so compilation will work locally
+                        if (node.kind === ts.SyntaxKind.StringLiteral &&
+                            node.parent &&
+                            node.parent.kind === ts.SyntaxKind.ImportDeclaration) {
+                            const literal = node as ts.StringLiteral;
+                            const dir = modPath.dirname(sourceFile.fileName);
+                            const updated = getUpdatedPath(dir, literal.text);
+                            if (updated) {
+                                return context.factory.createStringLiteral(updated);
                             }
                         }
 
-                        // Authorize method decorator
-                        if (node.parent.kind === ts.SyntaxKind.MethodDeclaration) {
-                            const baseClass = tryGetBaseClass(ManagedBaseClasses, node.parent.parent);
+                        // @permissions decorator on Object class
+                        if (node.kind === ts.SyntaxKind.Decorator &&
+                            getDecoratorName(node as ts.Decorator) === permissionsDecoratorName) {
+
+                            if (node.parent.kind === ts.SyntaxKind.ClassDeclaration) {
+
+                                const className = getClassName(node.parent);
+                                if (hasBaseClass(ObjectBaseClasses, node.parent)) {
+                                    if (!ClassHasPermissionsDecorator.has(className)) {
+                                        ClassHasPermissionsDecorator.add(className);
+                                        const {fileLine, fileColumn} = getLocInfo(sourceFile, node);
+                                        const permissions = tryGetPermissionsDecoratorArguments(node as ts.Decorator);
+                                        if (permissions) {
+                                            permissionAssignments.push(...permissions.map((op) => {
+                                                return {
+                                                    className,
+                                                    fileColumn,
+                                                    fileLine,
+                                                    fileName: sourceFile.fileName,
+                                                    access: op.p,
+                                                    scopes: op.scopes
+                                                } as PermissionAssignment;
+                                            }));
+                                        }
+                                    } else {
+                                        addTransformerError(node, ERR.DuplicatePermissionsDecorator_1, className);
+                                    }
+                                } else {
+                                    addTransformerError(node, ERR.PermissionsDecoratorWrongClass_1, className!);
+                                }
+                            } else {
+                                addTransformerError(node, ERR.PermissionsDecoratorOnMethod_0);
+                            }
+
+                            // Remove the decorators because they can cause side effects.
+                            return <ts.Node><unknown>undefined;
+                        }
+
+                        // @authorize decorator on a Callable class method
+                        if (node.kind === ts.SyntaxKind.Decorator &&
+                            getDecoratorName(node as ts.Decorator) === authorizeDecoratorName) {
+
+                            if (node.parent.kind === ts.SyntaxKind.MethodDeclaration) {
+                                const className = getClassName(node.parent.parent);
+                                const methodName = getMethodName(node.parent);
+                                const classMethod = `${className}.${methodName}`;
+
+                                if (hasBaseClass(CallableBaseClasses, node.parent.parent)) {
+                                    if (!ClassMethodHasAuthorizeDecorator.has(classMethod)) {
+                                        ClassMethodHasAuthorizeDecorator.add(classMethod);
+
+                                        const {fileLine, fileColumn} = getLocInfo(sourceFile, node);
+                                        const authorizations = tryGetAuthorizeDecoratorArguments(node as ts.Decorator);
+                                        if (authorizations) {
+                                            authorizeAssignments.push(...authorizations.map((c) => {
+                                                return {
+                                                    className,
+                                                    methodName,
+                                                    fileColumn,
+                                                    fileLine,
+                                                    fileName: sourceFile.fileName,
+                                                    scopes: c.scopes
+                                                } as AuthorizeAssignment;
+                                            }));
+                                        }
+                                    } else {
+                                        addTransformerError(node, ERR.DuplicateAuthorizeDecorator_2, className, methodName);
+                                    }
+                                } else {
+                                    addTransformerError(node, ERR.AuthorizeDecoratorOnWrongClass_2, className, methodName);
+                                }
+                            } else {
+                                addTransformerError(node, ERR.AuthorizeDecoratorOnClass_0);
+                            }
+
+                            // Remove the decorators because they can cause side effects.
+                            return <ts.Node><unknown>undefined;
+                        }
+
+                        // Callables cannot have getters
+                        if (node.kind === ts.SyntaxKind.GetAccessor) {
+                            const baseClass = tryGetBaseClass(CallableBaseClasses, node.parent);
                             if (baseClass) {
-                                const classDecl = node.parent.parent as ts.ClassDeclaration;
-                                const className = classDecl.name?.text!;
-                                const methodDecl = node.parent as ts.MethodDeclaration;
-                                const methodName = (methodDecl.name as ts.Identifier).text;
-                                const roles = getAuthorizeDecoratorRoles(node as ts.Decorator);
-
-                                authorizeDecorators.push({
-                                    className: className,
-                                    methodName: methodName,
-                                    roles: roles,
-                                    fileName: sourceFile.fileName,
-                                    fileLine: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1
-                                });
-
-                                // Remove the decorators because they can cause side effects.
-                                return <ts.Node><unknown>undefined;
+                                const property = node as ts.GetAccessorDeclaration;
+                                const className = (<ts.ClassDeclaration>node.parent).name?.text!;
+                                const propertyName = (<ts.Identifier>property.name)?.text;
+                                addTransformerError(node, ERR.CallableGetAccessor_3, className!, propertyName, baseClass);
                             }
                         }
-                    }
 
-                    // Callables cannot have getters
-                    if (node.kind === ts.SyntaxKind.GetAccessor) {
-                        const baseClass = tryGetBaseClass(CallableBaseClasses, node.parent);
-                        if (baseClass) {
-                            const property = node as ts.GetAccessorDeclaration;
-                            const className = (<ts.ClassDeclaration>node.parent).name?.text!;
-                            const propertyName = (<ts.Identifier>property.name)?.text;
-                            addTransformerError(node, ERR.CallableGetAccessor, className!, propertyName, baseClass);
+                        // Callables can't have setters
+                        if (node.kind === ts.SyntaxKind.SetAccessor) {
+                            const baseClass = tryGetBaseClass(CallableBaseClasses, node.parent);
+                            if (baseClass) {
+                                const property = node as ts.GetAccessorDeclaration;
+                                const className = (<ts.ClassDeclaration>node.parent).name?.text;
+                                const propertyName = (<ts.Identifier>property.name)?.text;
+                                addTransformerError(node, ERR.CallableSetAccessor_3, className!, propertyName, baseClass);
+                            }
                         }
-                    }
 
-                    // Callables can't have setters
-                    if (node.kind === ts.SyntaxKind.SetAccessor) {
-                        const baseClass = tryGetBaseClass(CallableBaseClasses, node.parent);
-                        if (baseClass) {
-                            const property = node as ts.GetAccessorDeclaration;
-                            const className = (<ts.ClassDeclaration>node.parent).name?.text;
-                            const propertyName = (<ts.Identifier>property.name)?.text;
-                            addTransformerError(node, ERR.CallableSetAccessor, className!, propertyName, baseClass);
-                        }
+                        return ts.visitEachChild(node, visitor, context);
                     }
-
-                    return ts.visitEachChild(node, visitor, context);
-                };
+                ;
 
                 return ts.visitNode(sourceFile, visitor);
             };
@@ -300,6 +427,10 @@ export const ClientDeclTransformer = (program: ts.Program) => {
 
     return transformerFactory;
 };
+
+function hasBaseClass(baseClassNames: string | string[], node: ts.Node) {
+    return !!tryGetBaseClass(baseClassNames, node);
+}
 
 function tryGetBaseClass(baseClassNames: string | string[], node: ts.Node): string | null {
     if (node && node.kind === ts.SyntaxKind.ClassDeclaration) {
@@ -509,6 +640,7 @@ export function transformTypeScript(inDir: PathLike,
 
     if (hasTransformerErrors()) {
         const errorCount = getTransformerErrorCount();
+        console.log("\n");
         logLocalError(`${errorCount} error${errorCount > 1 ? "s" : ""} occurred during compilation`);
         consumeAndPrintTransformerErrors();
         throw new ErrorAlreadyLogged();

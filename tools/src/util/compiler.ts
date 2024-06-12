@@ -13,17 +13,18 @@ import {
     ClientDeclTransformer,
     JavaScriptServiceExecutionTransformer,
     CreateStageTransformer,
-    transformTypeScript,
-    AuthorizeDecorator
+    transformTypeScript
 } from "./transformer";
 import {SingleBar} from "cli-progress";
+import {PermissionAssignment, AuthorizeAssignment} from "../service/admin";
 
 export interface CompilerOutput {
     // The directory that contains the JS files ready to be uploaded.
     schemaDir: string;
     // The directory that contains the .d.ts files ready to be used for client-side code gen.
     declDir: string;
-    authorizeDecorators: AuthorizeDecorator[];
+    permissionAssignments: PermissionAssignment[];
+    authorizeAssignments: AuthorizeAssignment[];
 }
 
 function writePackageJson(target: PathLike, obj: any) {
@@ -136,7 +137,8 @@ function compileTypeScript(buildDir: string,
 interface StageResult {
     transformedFiles: string[];
     stageDir: string;
-    authorizeDecorators: AuthorizeDecorator[];
+    permissionAssignments: PermissionAssignment[];
+    authorizeAssignments: AuthorizeAssignment[];
 }
 
 function stageForCompilation(buildDir: string, serviceDir: string, compilerOptions: ts.CompilerOptions): StageResult {
@@ -145,8 +147,10 @@ function stageForCompilation(buildDir: string, serviceDir: string, compilerOptio
 
     const stageDir = path.join(buildDir, 'stage');
 
-    const authorizeDecorators: AuthorizeDecorator[] = [];
-    const stageTransformer = CreateStageTransformer(authorizeDecorators);
+    const authorizeAssignments: AuthorizeAssignment[] = [];
+    const permissionAssignments: PermissionAssignment[] = [];
+
+    const stageTransformer = CreateStageTransformer(permissionAssignments, authorizeAssignments);
 
     const transformedFiles = transformTypeScript(serviceDir, stageDir, compilerOptions,
         stageTransformer, ['.ts', '.js', '.mjs']);
@@ -154,13 +158,14 @@ function stageForCompilation(buildDir: string, serviceDir: string, compilerOptio
     writeRuntimeStub(stageDir, true); //needed for compilation
     writeServicePackageJson(stageDir); //needed for compilation
 
-    return {transformedFiles, stageDir, authorizeDecorators};
+    return {transformedFiles, stageDir, permissionAssignments, authorizeAssignments};
 }
 
 function addCreateClientDeclaration(indexDTsFile: string) {
     let code = fs.readFileSync(indexDTsFile,'utf8');
     let c = "import { ServiceOptions, RoliClient } from \"roli-client\";\n" +
         code + "\nexport declare function createRoliClient(options?: ServiceOptions) : RoliClient;\n";
+
     fs.writeFileSync(indexDTsFile, c);
 }
 
@@ -208,7 +213,8 @@ export class CompilerOptions {
  * @param serviceDir - the service source code root directory
  * @param options - compiler options
  */
-export async function compile(progress: SingleBar | null, buildDir: string, serviceDir: string, options: CompilerOptions | null): Promise<CompilerOutput> {
+export async function compile(progress: SingleBar | null, buildDir: string, serviceDir: string,
+                              options: CompilerOptions | null): Promise<CompilerOutput> {
     options = options ?? new CompilerOptions();
 
     if (!ServiceConfig.fileExists(serviceDir)) {
@@ -238,7 +244,8 @@ export async function compile(progress: SingleBar | null, buildDir: string, serv
     const {
         transformedFiles,
         stageDir,
-        authorizeDecorators
+        permissionAssignments,
+        authorizeAssignments
     } = stageForCompilation(buildDir, serviceDir, compilerOptions);
     progress?.increment();
 
@@ -257,6 +264,6 @@ export async function compile(progress: SingleBar | null, buildDir: string, serv
     const schemaDir = transformJavaScriptForServiceExecution(outDir, preSchemaDir, compilerOptions);
     progress?.increment();
 
-    return {schemaDir, declDir, authorizeDecorators};
+    return {schemaDir, declDir, permissionAssignments, authorizeAssignments};
 }
 

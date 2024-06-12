@@ -15,9 +15,9 @@ export function createDeleteServiceVersionCommand(before: any): Command {
             if (before)
                 before();
             if (await executeDeleteServiceVersion(serviceName, version)) {
-                process.exitCode = 0;
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }

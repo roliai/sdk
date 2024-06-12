@@ -17,9 +17,9 @@ export function createListModelsCommand(before: any): Command {
                 before();
 
             if (await executeListModels(serviceName)) {
-                process.exitCode = 0;
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }

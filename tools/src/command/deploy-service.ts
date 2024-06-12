@@ -90,9 +90,9 @@ export function createDeployServiceCommand(before: any): Command {
             if (before)
                 before();
             if (await executeDeployService(opts.dir, opts.progress ?? false, opts.debug ?? false, true, opts.force ?? false)) {
-                process.exitCode = 0;
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }
@@ -189,7 +189,8 @@ export async function executeDeployService(dir: string,
         const {
             schemaDir,
             declDir,
-            authorizeDecorators
+            permissionAssignments,
+            authorizeAssignments
         } = await compile(progress, buildDir, serviceConfig.loadedFromDir, serviceConfig.compilerOptions);
 
         logVerbose(`Compressing typedef files in ${declDir}...`);
@@ -247,7 +248,8 @@ export async function executeDeployService(dir: string,
                 serviceConfig.name,
                 schemaFiles,
                 compressedServiceTypeDefinitionsStr,
-                authorizeDecorators,
+                permissionAssignments,
+                authorizeAssignments,
                 classMappings,
                 serviceConfig.identity.serviceId,
                 serviceConfig.identity.lastClassId

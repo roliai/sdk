@@ -1,6 +1,11 @@
 import path from "path";
 import fs from "fs";
 
+export function readBinaryTemplate(templateFileName: string) : string {
+    let templateFile = path.resolve(__dirname, "..", "templates", templateFileName);
+    return fs.readFileSync(templateFile, 'binary');
+}
+
 export function readTemplate(templateFileName: string): string {
     let templateFile = path.resolve(__dirname, "..", "templates", templateFileName);
     return fs.readFileSync(templateFile, {flag: "r", encoding: "utf-8"});

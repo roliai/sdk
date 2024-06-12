@@ -443,7 +443,8 @@ export type OkResponseType = CallMethodResponseProto |
 
 export class PlatformException {
     constructor(public code: Code,
-                public codeString: string) {
+                public codeString: string,
+                public when: string | null) {
         requiresTruthy('code', code);
         requiresTruthy('codeString', codeString);
     }

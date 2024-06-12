@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import {logLocalError, logRemoteError} from "./logging";
-import { getApiUrl } from "../model/connection-info-file";
+import {getApiUrl} from "../model/connection-info-file";
 import Mustache from "mustache";
 import {Unsigned, UnsignedZero} from "./unsigned";
 import {requiresTruthy} from "./requires";
@@ -16,11 +16,12 @@ import {FreeFunctionProto} from "../protocol/free-function-proto";
 import {BUILD_INFO} from "../config";
 import {ConstructorProto} from "../protocol/constructor-proto";
 import {MethodKindProto} from "../protocol/method-kind-proto";
-import {readTemplate} from "./template";
+import {readBinaryTemplate, readTemplate} from "./template";
 import JSZip from "jszip";
-import { BindingConfig } from "../model/binding-config";
-import { recreateDir } from "./loud-fs";
+import {BindingConfig} from "../model/binding-config";
+import {recreateDir} from "./loud-fs";
 import {CallableKindProto} from "../protocol/callable-kind-proto";
+import {changePackageName} from "./package-json.js";
 
 const {version} = require("../package.json");
 
@@ -34,7 +35,7 @@ function getClassSeparator(): string {
     return EOL + EOL;
 }
 
-function getLineSeparator() : string {
+function getLineSeparator(): string {
     return EOL;
 }
 
@@ -52,7 +53,8 @@ class GeneratedClient {
     }
 }
 
-function generateClient(logContext: string, isEsm: boolean, userKey: string, apiUrl: string, serviceIndex: ServiceIndexProto, regenCommand: string): GeneratedClient {
+function generateClient(logContext: string, isEsm: boolean, userKey: string, apiUrl: string,
+                        serviceIndex: ServiceIndexProto, regenCommand: string, clientPackageName: string): GeneratedClient {
     requiresTruthy('logContext', logContext);
     requiresTruthy('userKey', userKey);
     requiresTruthy('apiUrl', apiUrl);
@@ -184,7 +186,7 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
 
         clientExports.push(name);
     }
-    
+
     let endpointClassRegistrations = [];
     let endpointClasses = [];
     let sessionClassRegistrations = [];
@@ -232,7 +234,7 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
             }
 
             let methodTemplate;
-            switch(callableClass.kind()) {
+            switch (callableClass.kind()) {
                 case CallableKindProto.Endpoint:
                     methodTemplate = endpointMethodTemplate;
                     break;
@@ -254,7 +256,7 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
             methodsString = EOL + methods.join(getMethodSeparator());
         }
 
-        switch(callableClass.kind()) {
+        switch (callableClass.kind()) {
             case CallableKindProto.Endpoint:
                 endpointClasses.push(Mustache.render(endpointTemplate, {
                     ESM_EXPORT: isEsm ? "export " : "",
@@ -287,10 +289,18 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
         });
     }
 
+    const importTemplate = isEsm ?
+        readTemplate("index-import-esm.mustache") :
+        readTemplate("index-import-cjs.mustache");
+
+    const indexImports = Mustache.render(importTemplate, {
+        ROLI_CLIENT_PACKAGE_IMPORT: clientPackageName
+    });
+
     const index_js = Mustache.render(indexTemplate, {
         "BUILD_INFO": BUILD_INFO,
         ROLI_TOOLS_VERSION: version,
-        IMPORT: isEsm ? readTemplate("index-import-esm.js") : readTemplate("index-import-cjs.js"),
+        IMPORT: indexImports,
         CJS_EXPORT: cjsExports,
         ESM_CREATE_CLIENT_EXPORT: isEsm ? "export " : "",
         REGEN_COMMAND: regenCommand,
@@ -304,7 +314,7 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
         REGISTER_ENDPOINTS: endpointClassRegistrations.length > 0 ? endpointClassRegistrations.join(getLineSeparator()) : "",
         REGISTER_SESSIONS: sessionClassRegistrations.length > 0 ? sessionClassRegistrations.join(getLineSeparator()) : "",
         REGISTER_EVENTS: eventClassRegistrations.length > 0 ? eventClassRegistrations.join(getLineSeparator()) : "",
-        REGISTER_DATA:  dataClassRegistrations.length > 0 ? dataClassRegistrations.join(getLineSeparator()) : "",
+        REGISTER_DATA: dataClassRegistrations.length > 0 ? dataClassRegistrations.join(getLineSeparator()) : "",
         API_BASE_URL: apiUrl
     });
 
@@ -315,33 +325,55 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
     return new GeneratedClient(package_json, index_js);
 }
 
-function generateRootPackage(packageName: string, serviceVersion: Unsigned): string {
-    return Mustache.render(readTemplate("root-package-json.mustache"), {
+function generateRootPackage(react: boolean,
+                             packageName: string,
+                             serviceVersion: Unsigned,
+                             clientPackageName: string,
+                             reactPackageName?: string): string {
+    requiresTruthy('packageName', packageName);
+    requiresTruthy('serviceVersion', serviceVersion);
+    requiresTruthy('clientPackageName', clientPackageName);
+    if (react)
+        requiresTruthy('reactPackageName', reactPackageName);
+
+    const view = {
         PACKAGE_NAME: packageName,
-        VERSION: `${serviceVersion.toString()}.0.0`
-    })
+        VERSION: `${serviceVersion.toString()}.0.0`,
+        CLIENT_PACKAGE_NAME: clientPackageName
+    }
+
+    let template;
+    if (react) {
+        // @ts-ignore
+        view["REACT_PACKAGE_NAME"] = reactPackageName;
+        template = readTemplate("root-package-with-react-json.mustache");
+    } else {
+        template = readTemplate("root-package-json.mustache");
+    }
+
+    return Mustache.render(template, view);
 }
 
 async function writeTypeDefinitions(compressedServiceTypeDefinitionsStr: string, packageDir: string) {
     requiresTruthy('compressedServiceTypeDefinitionsStr', compressedServiceTypeDefinitionsStr);
-    if(!fs.existsSync(packageDir))
+    if (!fs.existsSync(packageDir))
         throw new Error(logLocalError(`Package directory ${packageDir} must already exist`));
     const zip = await JSZip.loadAsync(compressedServiceTypeDefinitionsStr, {base64: true});
 
     const files = zip.files;
     const fileNames = Object.keys(files);
-    for(let relativePath of fileNames) {
+    for (let relativePath of fileNames) {
         const archive = files[relativePath];
-        if(archive.dir)
+        if (archive.dir)
             continue; //don't create empty directories
 
-        if(relativePath.endsWith("config.d.ts"))
+        if (relativePath.endsWith("config.d.ts"))
             relativePath = relativePath.replace("config", "index");
 
         const fullPath = path.resolve(packageDir, relativePath);
         const dirPath = path.dirname(fullPath);
 
-        if(!fs.existsSync(dirPath)) {
+        if (!fs.existsSync(dirPath)) {
             fs.mkdirSync(dirPath, {recursive: true});
         }
 
@@ -350,15 +382,39 @@ async function writeTypeDefinitions(compressedServiceTypeDefinitionsStr: string,
     }
 }
 
-export function createOrUpdateBinding(
-        logContext: string, 
-        userKey: string, 
-        serviceIndex: ServiceIndexProto, 
-        regenCommand: string,
-        projectDir: string,
-        compressedServiceTypeDefinitionsStr: string
-    ):
-    { clientPackageName: string, clientPackageDir: string, wasUpdate: boolean } {
+async function unzipTemplate(sourceTemplateFile: string, packageDir: string) {
+    const bin = readBinaryTemplate(sourceTemplateFile);
+    const zip = await JSZip.loadAsync(bin);
+
+    const files = zip.files;
+    const fileNames = Object.keys(files);
+    for (let relativePath of fileNames) {
+        const archive = files[relativePath];
+        if (archive.dir)
+            continue; //don't create empty directories
+
+        const fullPath = path.resolve(packageDir, relativePath);
+        const dirPath = path.dirname(fullPath);
+
+        if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, {recursive: true});
+        }
+
+        const content = await archive.async('string');
+        fs.writeFileSync(fullPath, content, {encoding: "utf8"});
+    }
+}
+
+export async function createOrUpdateBinding(
+    logContext: string,
+    userKey: string,
+    serviceIndex: ServiceIndexProto,
+    regenCommand: string,
+    projectDir: string,
+    compressedServiceTypeDefinitionsStr: string,
+    react: boolean
+):
+    Promise<{ servicePackageName: string, servicePackageDir: string, wasUpdate: boolean }> {
 
     if (!fs.existsSync(projectDir)) {
         throw new Error(logLocalError("Destination project directory does not exist."));
@@ -384,32 +440,52 @@ export function createOrUpdateBinding(
     if (serviceVersion.equals(UnsignedZero))
         throw new Error(logLocalError(`Invalid service version`));
 
-    const rootPackage = generateRootPackage(packageName, serviceVersion);
 
     const apiUrl = getApiUrl();
 
+    const clientPackageName = `roli-client-${packageName}-${serviceVersion}`;
+
     // Generate the CJS client
-    const cjsClient = generateClient(logContext, false, userKey, apiUrl, serviceIndex, regenCommand);
+    const cjsClient = generateClient(logContext, false, userKey, apiUrl, serviceIndex, regenCommand, clientPackageName);
 
     // Generate the ESM client
-    const esmClient = generateClient(logContext, true, userKey, apiUrl, serviceIndex, regenCommand);
+    const esmClient = generateClient(logContext, true, userKey, apiUrl, serviceIndex, regenCommand, clientPackageName);
 
     // create necessary directories
     const relRootPath = ".roli/bindings/" + canonicalServiceName;
     const rootDir = path.join(projectDir, relRootPath);
     const cjsDir = path.join(rootDir, "cjs");
     const esmDir = path.join(rootDir, "esm");
+    const depsDir = path.join(rootDir, "deps");
 
     let isUpdate = fs.existsSync(rootDir);
 
     fs.mkdirSync(rootDir, {recursive: true});
-    
+
     recreateDir(cjsDir);
     recreateDir(esmDir);
+    recreateDir(depsDir);
+
+
+    const clientDir = path.join(depsDir, clientPackageName);
+    fs.mkdirSync(clientDir, {recursive: true});
+    await unzipTemplate("client.zip", clientDir);
+    changePackageName(path.join(clientDir, 'package.json'), clientPackageName);
+
+    const reactPackageName = `roli-react-${packageName}-${serviceVersion}`;
+    if (react) {
+        const reactDir = path.join(depsDir, reactPackageName);
+        fs.mkdirSync(reactDir, {recursive: true});
+        await unzipTemplate("react.zip", reactDir);
+        changePackageName(path.join(reactDir, 'package.json'), reactPackageName);
+    }
 
     //write the files
     const bindingConfig = new BindingConfig(rootDir, canonicalServiceName, serviceVersion);
     bindingConfig.write();
+
+    const rootPackage = generateRootPackage(react, packageName, serviceVersion, clientPackageName,
+        react ? reactPackageName : undefined);
 
     fs.writeFileSync(path.join(rootDir, "package.json"), rootPackage, {encoding: "utf8"})
     fs.writeFileSync(path.join(cjsDir, "package.json"), cjsClient.package_json, {encoding: "utf8"});
@@ -418,8 +494,8 @@ export function createOrUpdateBinding(
     fs.writeFileSync(path.join(esmDir, "index.js"), esmClient.index_js, {encoding: "utf8"});
 
     //write the type definitions
-    writeTypeDefinitions(compressedServiceTypeDefinitionsStr, cjsDir);
-    writeTypeDefinitions(compressedServiceTypeDefinitionsStr, esmDir);
+    await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, cjsDir);
+    await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, esmDir);
 
-    return {clientPackageName: packageName, clientPackageDir: relRootPath, wasUpdate: isUpdate};
+    return {servicePackageName: packageName, servicePackageDir: relRootPath, wasUpdate: isUpdate};
 }

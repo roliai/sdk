@@ -15,31 +15,36 @@ export function createSetConnectionInfoCommand(before: any): Command {
     return new Command('set-connection-info')
         .argument(`admin=<adminUrl>`, "Literally 'admin=' followed by the Roli Admin URL. Example: admin=https://admin.roli.app")
         .argument(`api=<apiUrl>`, "Literally 'api=' followed by the Roli API URL. Example: api=https://api.roli.app")
+        .argument(`login=<loginUrl>`, "Literally 'login=' followed by the Roli Login URL. Example: login=https://admin.roli.app/login")
         .option(`--enterprise`, "Whether or not the Roli backend is Enterprise Edition. Include to enable Enterprise Edition communication.")
         .description("Sets the connection information to use when talking to the Roli backend and generating client connection code.")
-        .action((token1: string, token2: string, opts: any) => {
+        .action((token1: string, token2: string, token3: string, opts: any) => {
             if (before)
                 before();
 
-            let apiUrl, adminUrl;
-
-            let t = getStringFromToken('api', token1);
-            if(t) {
-                apiUrl = t;
-            } else {
-                t = getStringFromToken('admin', token1);
-                if(t) {
-                    adminUrl = t;
+            let tokens = [token1, token2, token3];
+            let apiUrl, adminUrl, loginUrl;
+            for(const token of tokens) {
+                let t;
+                if(!apiUrl) {
+                    t = getStringFromToken('api', token);
+                    if(t) {
+                        apiUrl = t;
+                        continue;
+                    }
                 }
-            }
-
-            t = getStringFromToken('api', token2);
-            if(t) {
-                apiUrl = t;
-            } else {
-                t = getStringFromToken('admin', token2);
-                if(t) {
-                    adminUrl = t;
+                if(!adminUrl) {
+                    t = getStringFromToken('admin', token);
+                    if(t) {
+                        adminUrl = t;
+                        continue;
+                    }
+                }
+                if(!loginUrl) {
+                    t = getStringFromToken('login', token);
+                    if(t) {
+                        loginUrl = t;
+                    }
                 }
             }
 
@@ -53,10 +58,15 @@ export function createSetConnectionInfoCommand(before: any): Command {
                 return;
             }
 
-            if (executeSetConnectionInfo(apiUrl, adminUrl, opts.enterprise)) {
-                process.exitCode = 0;
+            if(!loginUrl) {
+                logLocalError("Invalid login URL token. Expected format: login=url");
+                return;
+            }
+
+            if (executeSetConnectionInfo(apiUrl, adminUrl, loginUrl, opts.enterprise)) {
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }
@@ -71,11 +81,6 @@ function canonicalizeUrl(what: string, url: string) : URL | null {
             return null;
         }
 
-        if(u.pathname !== '/') {
-            logLocalError(`The ${what} URL ${getColor(chalk.bold, url)} is invalid. The path must be empty.`);
-            return null;
-        }
-        
         if(u.search) {
             logLocalError(`The ${what} URL ${getColor(chalk.bold, url)} is invalid. The query must be empty.`);
             return null;
@@ -93,7 +98,7 @@ function canonicalizeUrl(what: string, url: string) : URL | null {
     }
 }
 
-export function executeSetConnectionInfo(apiUrlStr: string, adminUrlStr: string, isEnterprise: boolean): boolean {
+export function executeSetConnectionInfo(apiUrlStr: string, adminUrlStr: string, loginUrlStr: string, isEnterprise: boolean): boolean {
     const apiUrl = canonicalizeUrl(getColor(chalk.blueBright, 'api'), apiUrlStr);
     if(!apiUrl) {
         //already logged
@@ -106,7 +111,13 @@ export function executeSetConnectionInfo(apiUrlStr: string, adminUrlStr: string,
         return false;
     }
 
-    new ConnectionInfoFile(isEnterprise, apiUrl.toString(), adminUrl.toString()).write();
+    const loginUrl = canonicalizeUrl(getColor(chalk.magentaBright, 'login'), loginUrlStr);
+    if(!loginUrl) {
+        //already logged
+        return false;
+    }
+
+    new ConnectionInfoFile(isEnterprise, apiUrl.toString(), adminUrl.toString(), loginUrl.toString()).write();
 
     const endpoints = ConnectionInfoFile.tryOpen();
     if(!endpoints) { 
@@ -120,6 +131,10 @@ export function executeSetConnectionInfo(apiUrlStr: string, adminUrlStr: string,
     }
     if(endpoints?.apiBaseUrl !== apiUrl.toString()) {
         logLocalError(`Unexpectedly the apiBaseUrl property value "${endpoints?.apiBaseUrl ?? '<empty>'}" in the newly written ${getConnectionInfoFilePath()} file didn't match '${apiUrl}'`);
+        return false;
+    }
+    if(endpoints?.loginUrl !== loginUrl.toString()) {
+        logLocalError(`Unexpectedly the loginUrl property value "${endpoints?.loginUrl ?? '<empty>'}" in the newly written ${getConnectionInfoFilePath()} file didn't match '${loginUrl}'`);
         return false;
     }
 

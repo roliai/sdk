@@ -16,6 +16,8 @@ type AnyDataUpdateListener = (e: any) => Promise<void> | void;
 type AnyEventListener = (msg: Event) => Promise<void> | void;
 export class ServiceContext {
     private readonly _serviceKeyToApiClient = new KeyMap<ServiceKey, ApiClient>();
+    private _accessToken: string | null = null;
+
     constructor(private readonly serviceRegistry: ServiceRegistry,
                 private readonly eventRegistry: EventRegistry,
                 private readonly apiClientFactory: ApiClientFactory,
@@ -26,6 +28,13 @@ export class ServiceContext {
         requiresTruthy('apiClientFactory', apiClientFactory);
         requiresTruthy('trackerFactory', trackerFactory);
         requiresTruthy('responseReader', responseReader);
+    }
+
+    public setAccessToken(token: string | null) {
+        if(this._accessToken !== token) {
+            this._accessToken = token;
+            this.clearApiClients();
+        }
     }
 
     public setApiClient(serviceKey: ServiceKey, apiClient: ApiClient) {
@@ -62,7 +71,7 @@ export class ServiceContext {
         let [authKey, admin] = this.serviceRegistry.getAuth(serviceKey);
 
         try {
-            apiClient = await this.apiClientFactory.create(serviceKey, admin, authKey,
+            apiClient = await this.apiClientFactory.create(serviceKey, admin, authKey, this._accessToken,
                 createHandleDataUpdateMessageWithTracker(this.trackerFactory, this.responseReader),
                 createHandleEventMessageWithTracker(this.trackerFactory, this.responseReader, this.eventRegistry));
         } catch (reason) {

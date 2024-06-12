@@ -15,9 +15,9 @@ export function createUnregisterModelCommand(before: any): Command {
                 before();
 
             if (await executeUnregisterModel(opts.key, serviceName)) {
-                process.exitCode = 0;
+                process.exit(0);
             } else {
-                process.exitCode = 1;
+                process.exit(1);
             }
         });
 }

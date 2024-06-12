@@ -3,7 +3,7 @@
     "target": "es2020",
     "module": "esnext",
     "declaration": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "strict": true,
     "esModuleInterop": true,
     "noFallthroughCasesInSwitch": true,

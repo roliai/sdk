@@ -59,13 +59,14 @@ export class ApiClientFactory {
     }
 
     async create(serviceKey: ServiceKey,
-                admin: boolean,    
-                authKey: string,
-                updateHandler: DataUpdateMessageHandler,
-                eventMessageHandler: EventMessageHandler): Promise<ApiClient> {
+                 admin: boolean,
+                 authKey: string,
+                 accessToken: string | null,
+                 updateHandler: DataUpdateMessageHandler,
+                 eventMessageHandler: EventMessageHandler): Promise<ApiClient> {
         const serviceRegistry = this._serviceRegistry;
         return new ApiClient(this._messageTracing, this._requestFactory, this._responseReader,
-            new OuterspaceClientFactory(this._apiBaseUrl, admin, authKey, function (messageBuffer) {
+            new OuterspaceClientFactory(this._apiBaseUrl, admin, authKey, accessToken, function (messageBuffer) {
                 requiresTruthy('messageBuffer', messageBuffer);
 
                 const apiUserMessage = ApiUserMessageProto.getRootAsApiUserMessageProto(new ByteBuffer(new Uint8Array(messageBuffer)));
@@ -121,7 +122,11 @@ function logReceive<T extends OkResponseType>(logContext: string, method: string
         const messageCount = userResponse.messages ? userResponse.messages.length : 0;
         logVerbose(logContext, `Received: ${method} OK with ${messageCount} messages`);
     } else if (userResponse.platformException) {
-        logError(logContext, `Received: PlatformError ${userResponse.platformException.codeString}`);
+        let msg = `Received: PlatformError ${userResponse.platformException.codeString}`;
+        if(userResponse.platformException.when) {
+            msg += ` when ${userResponse.platformException.when}`;
+        }
+        logError(logContext, msg);
     } else if (userResponse.exception) {
         const scriptException = userResponse.exception;
         logError(logContext, `Received: ScriptException "${scriptException.message}" at ${scriptException.stack}`);
@@ -131,6 +136,7 @@ function logReceive<T extends OkResponseType>(logContext: string, method: string
 export class ApiClient {
     private readonly _outerspaceClientFactory: OuterspaceClientFactory;
     private _outerspaceClient: OuterspaceClient | null;
+
     constructor(
         private readonly messageTracing: boolean,
         private readonly requestFactory: RequestFactory,
@@ -145,12 +151,12 @@ export class ApiClient {
     }
 
     shutdown() {
-        if(this._outerspaceClient)
+        if (this._outerspaceClient)
             this._outerspaceClient.shutdown();
     }
 
-    private async getOuterspaceClient() : Promise<OuterspaceClient> {
-        if(this._outerspaceClient && this._outerspaceClient.isReady())
+    private async getOuterspaceClient(): Promise<OuterspaceClient> {
+        if (this._outerspaceClient && this._outerspaceClient.isReady())
             return this._outerspaceClient;
         this._outerspaceClient = await this._outerspaceClientFactory.create();
         return this._outerspaceClient;

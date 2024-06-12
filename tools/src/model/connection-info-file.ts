@@ -3,7 +3,7 @@ import path from "path";
 import fs, {PathLike} from "fs";
 import {logLocalError, logVerbose} from "../util/logging";
 import {homedir} from "os";
-import { DEFAULT_ADMIN_SERVICE_BASE_URL, DEFAULT_API_SERVICE_BASE_URL } from "../config";
+import {DEFAULT_ADMIN_SERVICE_BASE_URL, DEFAULT_API_SERVICE_BASE_URL, DEFAULT_LOGIN_URL} from "../config";
 import { writeToFile } from "../util/config-file";
 import { URL } from "url";
 
@@ -22,10 +22,12 @@ export class ConnectionInfoFile {
     constructor(
         public isEnterprise: boolean,
         public apiBaseUrl: string,
-        public adminBaseUrl: string
+        public adminBaseUrl: string,
+        public loginUrl: string
     ){
         requiresTruthy('apiBaseUrl', apiBaseUrl);
         requiresTruthy('adminBaseUrl', adminBaseUrl);
+        requiresTruthy('loginUrl', loginUrl);
     }
 
     public write() {
@@ -67,7 +69,8 @@ export class ConnectionInfoFile {
         let connectionInfoObj = JSON.parse(connectionInfoJson);
         if (!connectionInfoObj ||
             !connectionInfoObj.hasOwnProperty("apiBaseUrl") ||
-            !connectionInfoObj.hasOwnProperty("adminBaseUrl")) {
+            !connectionInfoObj.hasOwnProperty("adminBaseUrl") ||
+            !connectionInfoObj.hasOwnProperty("loginUrl")) {
             logLocalError("Invalid or corrupt login file");
             return null;
         }
@@ -82,8 +85,13 @@ export class ConnectionInfoFile {
             return null;
         }
 
+        if(!connectionInfoObj.loginUrl || connectionInfoObj.loginUrl.length <= 0) {
+            logLocalError("Invalid loginUrl value in connection info file");
+            return null;
+        }
+
         return new ConnectionInfoFile(connectionInfoObj?.isEnterprise === true,
-            connectionInfoObj.apiBaseUrl, connectionInfoObj.adminBaseUrl);
+            connectionInfoObj.apiBaseUrl, connectionInfoObj.adminBaseUrl, connectionInfoObj.loginUrl);
     }
 }
 
@@ -91,7 +99,8 @@ export function getConnectionInfoFile() : ConnectionInfoFile {
     if(!ConnectionInfoFile.exists()) {
         new ConnectionInfoFile(false,
             DEFAULT_API_SERVICE_BASE_URL, 
-            DEFAULT_ADMIN_SERVICE_BASE_URL
+            DEFAULT_ADMIN_SERVICE_BASE_URL,
+            DEFAULT_LOGIN_URL
             ).write();
     }
 
@@ -121,5 +130,5 @@ export function getAdminApiUrl() {
 }
 
 export function getLoginUrl() {
-    return withPath(getConnectionInfoFile().adminBaseUrl, 'login');
+    return getConnectionInfoFile().loginUrl;
 }

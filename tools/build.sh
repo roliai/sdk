@@ -13,9 +13,6 @@ if [ "${#}" == 1 ] && [ "${1}" == "--ci" ]; then
 else
     if [ ! "${#}" == 2 ]; then
         echo "error: Invalid options specified"
-        echo $(basename ${0})" --ci | <target> <type>"
-        echo "  target: local | test | production"
-        echo "  type: debug | release"
         exit 1
     fi
 
@@ -29,6 +26,16 @@ else
         echo "error: Invalid build type \"${2}\""
         exit 1
     fi
+fi
+
+if [ ! -f "${ROLI_REACT_DIR}/config.${BUILD_TARGET}.${BUILD_TYPE_L}.stamp" ]; then
+    echo "error: Must render react configuration first"
+    exit 1
+fi
+
+if [ ! -d "${ROLI_REACT_DIR}/dist" ]; then
+    echo "error: Must build react first"
+    exit 1
 fi
 
 if [ ! -f "${ROLI_CLIENT_DIR}/config.${BUILD_TARGET}.${BUILD_TYPE_L}.stamp" ]; then
@@ -120,9 +127,21 @@ merge_dependencies ./package.json ${ROLI_CLIENT_DIR}/package.json dependencies
 merge_dependencies ./package.json ${ROLI_CLIENT_DIR}/package.json devDependencies
 move_dependency typescript
 
-echo "Embedding the client"
+echo "Embedding the client for Tool's use"
 rm -rf ./src/client
 cp -r ${ROLI_CLIENT_DIR}/src ./src/client
+
+echo "Creating client.zip for Tool's distribution"
+rm -f ./src/templates/client.zip
+pushd ${ROLI_CLIENT_DIR}/dist
+zip -r ${ROLI_TOOLS_DIR}/src/templates/client.zip .
+popd
+
+echo "Creating react.zip for Tool's distribution"
+rm -f ./src/templates/react.zip
+pushd ${ROLI_REACT_DIR}/dist
+zip -r ${ROLI_TOOLS_DIR}/src/templates/react.zip .
+popd
 
 echo "Building tools for the ${BUILD_TARGET} environment in ${BUILD_TYPE_L} mode"
 

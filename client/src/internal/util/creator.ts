@@ -48,7 +48,8 @@ export function internalCreateClient(
     const serviceContext = new ServiceContext(typeRegistry.service, typeRegistry.event, apiClientFactory,
         trackerFactory, responseReader);
 
-    const internalClient = new InternalClient(serviceContext, typeRegistry.endpoint, typeRegistry.session, typeRegistry.event, responseReader, trackerFactory);
+    const internalClient = new InternalClient(serviceContext, typeRegistry.endpoint,
+        typeRegistry.session, typeRegistry.event, responseReader, trackerFactory);
 
     trackerFactory.internalClient = internalClient;
 

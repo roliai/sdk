@@ -48,29 +48,31 @@ export enum Code {
     Datastore_ServiceIndexNotFound = 45,
     Datastore_ServiceSourceNotFound = 46,
     Datastore_ServiceAuthorizationCorrupted = 47,
-    Validator_ClientMustUpgrade = 51,
-    Validator_InvalidFlatbuffer = 52,
-    Validator_Forbidden = 53,
-    Validator_PrimaryKeyTooLarge = 54,
-    Validator_PrimaryKeyTooSmall = 55,
-    Validator_InvalidRequest = 56,
-    Innerspace_ConnectionFault = 59,
-    Innerspace_RequestTooLarge = 60,
-    Innerspace_Shutdown = 61,
-    Innerspace_UnableToResolveHostPort = 62,
-    Innerspace_NoEndpoints = 63,
-    Launcher_TimedOutWhileGettingService = 65,
-    Launcher_FailedToSpawnService = 66,
-    Service_ServiceDeleted = 68,
-    HttpCallFactory_InvalidHostPort = 69,
-    HttpCall_UnableToSetClientHostname = 70,
-    HttpCall_FailedToResolveHostname = 71,
-    HttpCall_UnableToConnect = 72,
-    HttpCall_UnableToPerformSslHandshake = 73,
-    HttpCall_FailedToWriteToServerStream = 74,
-    HttpCall_FailedToReadFromServerStream = 75,
-    Config_InvalidKey = 76,
-    Config_ValueNotFound = 77
+    Validator_ClientMustUpgrade = 49,
+    Validator_InvalidFlatbuffer = 50,
+    Validator_Forbidden = 51,
+    Validator_PrimaryKeyTooLarge = 52,
+    Validator_PrimaryKeyTooSmall = 53,
+    Validator_InvalidRequest = 54,
+    Innerspace_ConnectionFault = 57,
+    Innerspace_RequestTooLarge = 58,
+    Innerspace_Shutdown = 59,
+    Innerspace_UnableToResolveHostPort = 60,
+    Innerspace_NoEndpoints = 61,
+    Launcher_TimedOutWhileGettingService = 63,
+    Launcher_FailedToSpawnService = 64,
+    Service_ServiceDeleted = 66,
+    HttpCallFactory_InvalidHostPort = 67,
+    HttpCall_UnableToSetClientHostname = 68,
+    HttpCall_FailedToResolveHostname = 69,
+    HttpCall_UnableToConnect = 70,
+    HttpCall_UnableToPerformSslHandshake = 71,
+    HttpCall_FailedToWriteToServerStream = 72,
+    HttpCall_FailedToReadFromServerStream = 73,
+    Config_InvalidKey = 74,
+    Config_ValueNotFound = 75,
+    AccessDenied = 88,
+    NotAuthorized = 89
 }
 
 export function getCodeName(code: Code) {
@@ -215,6 +217,10 @@ export function getCodeName(code: Code) {
             return 'Config_InvalidKey';
         case Code.Config_ValueNotFound:
             return 'Config_ValueNotFound';
+        case Code.AccessDenied:
+            return 'AccessDenied';
+        case Code.NotAuthorized:
+            return 'NotAuthorized';
         default:
             return `InternalError(${code})`;
     }
