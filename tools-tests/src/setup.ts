@@ -254,7 +254,7 @@ async function setupService(clientRunDir: string, serviceName: string, specificV
     //Connect the service
     console.log(`== executeConnect(clientRunDir: ${clientRunDir} , serviceName: ${serviceName} ...)`)
     const versionStr = specificVersion ? String("1") : null;
-    if (!await executeGenerateClient(clientRunDir, serviceName, versionStr, false, true))
+    if (!await executeGenerateClient(clientRunDir, serviceName, versionStr, false, true, false))
         throw new Error("connect failed");
 }
 

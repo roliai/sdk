@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "browser-run": "^9.0.0",
-    "electron": "^15.3.1",
-    "roli-client": "latest"
+    "electron": "^15.3.1"
   }
 }

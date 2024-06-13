@@ -1138,7 +1138,10 @@ export function wrapScriptException(exception: ScriptException) {
 
 export function getErrorForNotOkResponse<T extends OkResponseType>(logContext: string, response: UserResponse<T>) {
     if (response.platformException) {
-        return new PlatformError(`Roli encountered an error ${response.platformException.codeString}`, response.platformException.codeString, logContext);
+        let msg = `Roli encountered an error ${response.platformException.codeString}`;
+        if(response.platformException.when)
+            msg += ` when ${response.platformException.when}`;
+        return new PlatformError(msg, response.platformException.codeString, logContext);
     } else if (response.exception) {
         return wrapScriptException(response.exception);
     } else {

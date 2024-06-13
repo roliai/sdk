@@ -22,7 +22,7 @@ async function suite() {
                     thrown = true;
                     console.log(`Received the expected result`);
                 } else {
-                    console.log(`Recieved the right exception but an unexpected code ${e.code} with message ${e.message}`);
+                    console.log(`Received the right exception but an unexpected code ${e.code} with message ${e.message}`);
                 }
             } else {
                 console.log(`Failed to receive the right exception object. Raw exception: ${JSON.stringify(e)}`);

@@ -1,5 +1,4 @@
-const {createRoliClient, MemoryCapEndpoint} = require("memory-cap-service");
-const {ServiceOptions, PlatformError} = require("roli-client");
+const {createRoliClient, MemoryCapEndpoint, ServiceOptions, PlatformError} = require("memory-cap-service");
 const t = require("./single-runner.js");
 const {test, run, setLogPrefix, getLogPrefix} = t;
 const a = require("./assert.js");

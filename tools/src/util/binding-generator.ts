@@ -466,7 +466,6 @@ export async function createOrUpdateBinding(
     recreateDir(esmDir);
     recreateDir(depsDir);
 
-
     const clientDir = path.join(depsDir, clientPackageName);
     fs.mkdirSync(clientDir, {recursive: true});
     await unzipTemplate("client.zip", clientDir);

@@ -1,4 +1,3 @@
-const {createRoliClient, Exercise, ExerciseAdded, ExerciseTrackerEndpoint, User} = require("exercise-tracker-service");
-const {ServiceOptions, createUuid} = require("roli-client");
+const {createRoliClient, Exercise, ExerciseAdded, ExerciseTrackerEndpoint, User, ServiceOptions, createUuid} = require("exercise-tracker-service");
 const {test, run, barrierWait, setLogPrefix, getLogPrefix} = require("./shared-runner.js");
 const {assert} = require("./assert.js");
