@@ -4,7 +4,7 @@
   "main": "roli.js",
   "scripts": {
     "build": "./build.sh dev debug",
-    "start": "node ./dist/roli.js generate-client tasks -d /home/scott/b2c/client"
+    "start": "node ./dist/roli.js deploy-service -d /home/scott/b2c/service"
   },
   "bin": {
     "roli": "roli.js"

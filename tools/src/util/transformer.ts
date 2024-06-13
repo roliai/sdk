@@ -6,7 +6,7 @@ import fs, {PathLike} from "fs";
 import {createDir} from "./loud-fs";
 import {ErrorAlreadyLogged, logLocalError, logVerbose} from "./logging";
 import {AuthorizeAssignment, PermissionAssignment} from "../service/admin";
-import {CallAuthorization, ObjectPermission, Permission} from "./client-decorator-eval";
+import {Permission} from "./client-decorator-eval";
 
 const permissionsDecoratorName = "permissions";
 const authorizeDecoratorName = 'authorize';
@@ -102,7 +102,10 @@ function getDecoratorName(decorator: ts.Decorator): string {
     return identifier.escapedText.toString();
 }
 
-const AllPermission = Permission.CreateReadWriteDelete;
+const AllPermission = Permission.Create | Permission.Read | Permission.Write | Permission.Delete;
+
+type ObjectPermission = {p: Permission; scopes: string[];}
+type CallAuthorization = {scopes: string[];}
 
 function validScope(s: any) {
     return typeof s === "string" && s.length > 0 && (s.search(/\s/) == -1);

@@ -12,7 +12,7 @@ import {
 import fs from "fs";
 import path from "path";
 import crc32 from "crc-32";
-import {AdminSingleton, ServiceFileContent} from "../service/admin";
+import {AdminSingleton, AuthorizeAssignment, PermissionAssignment, ServiceFileContent} from "../service/admin";
 import {uuidv4} from "../util/util";
 import {createLogContext} from "../util/log-context";
 import chalk from "chalk";
@@ -63,11 +63,37 @@ function getServiceFileContent(baseDir: string, dir: string, ext: string[]): Ser
     return results.sort(compare);
 }
 
-function getChecksum(serviceName: string, serviceDir: string, serviceFiles: ServiceFileContent[]): number {
+function getChecksum(permissionAssignments: PermissionAssignment[], authorizeAssignments: AuthorizeAssignment[], serviceName: string, serviceFiles: ServiceFileContent[]): number {
     //note: don't need to know which one changed, just that any of them changed.
     let value = 0;
 
     value = crc32.bstr(serviceName, value);
+
+    if(permissionAssignments && permissionAssignments.length > 0) {
+        permissionAssignments.forEach(pa => {
+            value = crc32.bstr(pa.fileName, value);
+            value = crc32.bstr(pa.className, value);
+            value = crc32.bstr(pa.fileLine.toString(), value);
+            value = crc32.bstr(pa.fileColumn.toString(), value);
+            value = crc32.bstr(pa.access.toString(), value);
+            pa.scopes.forEach(scope => {
+                value = crc32.bstr(scope, value);
+            })
+        })
+    }
+
+    if(authorizeAssignments && authorizeAssignments.length > 0) {
+        authorizeAssignments.forEach(a => {
+            value = crc32.bstr(a.fileName, value);
+            value = crc32.bstr(a.className, value);
+            value = crc32.bstr(a.methodName, value);
+            value = crc32.bstr(a.fileLine.toString(), value);
+            value = crc32.bstr(a.fileColumn.toString(), value);
+            a.scopes.forEach(scope => {
+                value = crc32.bstr(scope, value);
+            })
+        })
+    }
 
     serviceFiles.forEach(serviceFile => {
         //include the filename in the crc to detect filename changes
@@ -206,7 +232,7 @@ export async function executeDeployService(dir: string,
             return false;
         }
 
-        let checksum = getChecksum(serviceConfig.name, schemaDir, schemaFiles);
+        let checksum = getChecksum(permissionAssignments, authorizeAssignments, serviceConfig.name, schemaFiles);
 
         const classMappings: ServiceClassMapping[] = [];
         if (serviceConfig.classes.length > 0) {
