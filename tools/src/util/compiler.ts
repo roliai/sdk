@@ -4,7 +4,7 @@ import chalk from "chalk";
 import fs, {PathLike} from "fs";
 import path from "path";
 
-import {SERVICE_RUNTIME_PACKAGE_NAME} from "../constants.js";
+import {SERVICE_CLIENT_PACKAGE_NAME_MARKER, SERVICE_RUNTIME_PACKAGE_NAME} from "../constants.js";
 import {ServiceConfig} from "../model/service-config.js";
 import {getColor, logLocalError, logVerbose} from "./logging.js";
 import {createDir} from "./loud-fs.js";
@@ -163,7 +163,7 @@ function stageForCompilation(buildDir: string, serviceDir: string, compilerOptio
 
 function addCreateClientDeclaration(indexDTsFile: string) {
     let code = fs.readFileSync(indexDTsFile,'utf8');
-    let c = "import { ServiceOptions, RoliClient } from \"roli-client\";\n" +
+    let c = `import { ServiceOptions, RoliClient } from \"${SERVICE_CLIENT_PACKAGE_NAME_MARKER}\";\n` +
         code + "\nexport declare function createRoliClient(options?: ServiceOptions) : RoliClient;\n";
 
     fs.writeFileSync(indexDTsFile, c);

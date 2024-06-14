@@ -22,6 +22,7 @@ import {BindingConfig} from "../model/binding-config";
 import {recreateDir} from "./loud-fs";
 import {CallableKindProto} from "../protocol/callable-kind-proto";
 import {changePackageName} from "./package-json.js";
+import {SERVICE_CLIENT_PACKAGE_NAME_MARKER} from "../constants";
 
 const {version} = require("../package.json");
 
@@ -354,7 +355,7 @@ function generateRootPackage(react: boolean,
     return Mustache.render(template, view);
 }
 
-async function writeTypeDefinitions(compressedServiceTypeDefinitionsStr: string, packageDir: string) {
+async function writeTypeDefinitions(clientPackageName: string, compressedServiceTypeDefinitionsStr: string, packageDir: string, clientDir: string) {
     requiresTruthy('compressedServiceTypeDefinitionsStr', compressedServiceTypeDefinitionsStr);
     if (!fs.existsSync(packageDir))
         throw new Error(logLocalError(`Package directory ${packageDir} must already exist`));
@@ -377,7 +378,13 @@ async function writeTypeDefinitions(compressedServiceTypeDefinitionsStr: string,
             fs.mkdirSync(dirPath, {recursive: true});
         }
 
-        const content = await archive.async('string');
+        let content = await archive.async('string');
+
+        const clientRelativePath = path.relative(dirPath, clientDir);
+
+
+        content = content.replaceAll(SERVICE_CLIENT_PACKAGE_NAME_MARKER, clientRelativePath);
+
         fs.writeFileSync(fullPath, content, {encoding: "utf8"});
     }
 }
@@ -493,8 +500,8 @@ export async function createOrUpdateBinding(
     fs.writeFileSync(path.join(esmDir, "index.js"), esmClient.index_js, {encoding: "utf8"});
 
     //write the type definitions
-    await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, cjsDir);
-    await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, esmDir);
+    await writeTypeDefinitions(clientPackageName, compressedServiceTypeDefinitionsStr, cjsDir, clientDir);
+    await writeTypeDefinitions(clientPackageName, compressedServiceTypeDefinitionsStr, esmDir, clientDir);
 
     return {servicePackageName: packageName, servicePackageDir: relRootPath, wasUpdate: isUpdate};
 }

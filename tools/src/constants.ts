@@ -1,2 +1,2 @@
 export const SERVICE_RUNTIME_PACKAGE_NAME = 'roli-runtime';
-export const SERVICE_CLIENT_PACKAGE_NAME = 'roli-client';
+export const SERVICE_CLIENT_PACKAGE_NAME_MARKER = '@@@ROLI-CLIENT-PACKAGE-NAME@@@';

@@ -1,7 +1,10 @@
 import ts, {SourceFile, SyntaxKind} from "typescript";
 import chalk from "chalk";
 import path, {ParsedPath} from "path";
-import {SERVICE_CLIENT_PACKAGE_NAME, SERVICE_RUNTIME_PACKAGE_NAME} from "../constants";
+import {
+    SERVICE_CLIENT_PACKAGE_NAME_MARKER,
+    SERVICE_RUNTIME_PACKAGE_NAME
+} from "../constants";
 import fs, {PathLike} from "fs";
 import {createDir} from "./loud-fs";
 import {ErrorAlreadyLogged, logLocalError, logVerbose} from "./logging";
@@ -374,7 +377,7 @@ export const ClientDeclTransformer = (program: ts.Program) => {
                     node.parent.kind === ts.SyntaxKind.ImportDeclaration) {
                     const literal = node as ts.StringLiteral;
                     if (literal.text.indexOf(SERVICE_RUNTIME_PACKAGE_NAME) > -1) {
-                        const updated = literal.text.replace(SERVICE_RUNTIME_PACKAGE_NAME, SERVICE_CLIENT_PACKAGE_NAME);
+                        const updated = literal.text.replace(SERVICE_RUNTIME_PACKAGE_NAME, SERVICE_CLIENT_PACKAGE_NAME_MARKER);
                         return context.factory.createStringLiteral(updated);
                     }
                 }

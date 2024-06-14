@@ -325,7 +325,7 @@ export async function executeDeployService(dir: string,
         return false;
     } finally {
         if (buildDir && fs.existsSync(buildDir)) {
-            if (complete || !debug) {
+            if (!debug && complete) {
                 fs.rmSync(buildDir, {recursive: true, force: true});
             }
         }

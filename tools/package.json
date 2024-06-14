@@ -3,8 +3,9 @@
   "private": "true",
   "main": "roli.js",
   "scripts": {
-    "build": "./build.sh dev debug",
-    "start": "node ./dist/roli.js deploy-service -d /home/scott/b2c/service"
+    "build": "./build.sh managedcloud debug",
+    "deploy-service": "node ./dist/roli.js deploy-service -d /home/scott/b2c/service --force",
+    "generate-client": "node ./dist/roli.js generate-client -d /home/scott/b2c/client tasks"
   },
   "bin": {
     "roli": "roli.js"
