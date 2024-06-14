@@ -355,7 +355,7 @@ function generateRootPackage(react: boolean,
     return Mustache.render(template, view);
 }
 
-async function writeTypeDefinitions(clientPackageName: string, compressedServiceTypeDefinitionsStr: string, packageDir: string, clientDir: string) {
+async function writeTypeDefinitions(compressedServiceTypeDefinitionsStr: string, packageDir: string, clientDir: string) {
     requiresTruthy('compressedServiceTypeDefinitionsStr', compressedServiceTypeDefinitionsStr);
     if (!fs.existsSync(packageDir))
         throw new Error(logLocalError(`Package directory ${packageDir} must already exist`));
@@ -500,8 +500,8 @@ export async function createOrUpdateBinding(
     fs.writeFileSync(path.join(esmDir, "index.js"), esmClient.index_js, {encoding: "utf8"});
 
     //write the type definitions
-    await writeTypeDefinitions(clientPackageName, compressedServiceTypeDefinitionsStr, cjsDir, clientDir);
-    await writeTypeDefinitions(clientPackageName, compressedServiceTypeDefinitionsStr, esmDir, clientDir);
+    await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, cjsDir, clientDir);
+    await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, esmDir, clientDir);
 
     return {servicePackageName: packageName, servicePackageDir: relRootPath, wasUpdate: isUpdate};
 }

@@ -163,8 +163,12 @@ function stageForCompilation(buildDir: string, serviceDir: string, compilerOptio
 
 function addCreateClientDeclaration(indexDTsFile: string) {
     let code = fs.readFileSync(indexDTsFile,'utf8');
-    let c = `import { ServiceOptions, RoliClient } from \"${SERVICE_CLIENT_PACKAGE_NAME_MARKER}\";\n` +
-        code + "\nexport declare function createRoliClient(options?: ServiceOptions) : RoliClient;\n";
+    let c =
+`export * from \"${SERVICE_CLIENT_PACKAGE_NAME_MARKER}\";
+import { ServiceOptions, RoliClient } from \"${SERVICE_CLIENT_PACKAGE_NAME_MARKER}\";
+${code}
+export declare function createRoliClient(options?: ServiceOptions) : RoliClient;
+`;
 
     fs.writeFileSync(indexDTsFile, c);
 }
