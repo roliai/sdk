@@ -29,8 +29,8 @@ function createRoliOptions() {
         GlobalOptions.showLogo = false;
     });
 
-    program.option('--version', "Output the version of roli-tools and exit.")
-    program.on('option:version', function () {
+    program.option('--tools-version', "Output the version of roli-tools and exit.")
+    program.on('option:tools-version', function () {
         console.log(version);
         process.exit(0);
     });
