@@ -1,4 +1,5 @@
 import {createContext, FunctionComponent, ReactNode, useContext} from "react";
+// @ts-ignore
 import type {RoliClient} from "roli-client"
 
 /**
