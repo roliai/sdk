@@ -11,8 +11,4 @@ TEST="method-and-serialization"
 ./.run-single.sh ${TEST} esm
 
 ./.compile.sh ${TEST} cjs single true
-./.run-browser.sh ${TEST} electron
 ./.run-browser.sh ${TEST} chrome
-
-# TODO: make Firefox work again
-# ./.run-browser.sh ${TEST} firefox

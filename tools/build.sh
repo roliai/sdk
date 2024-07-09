@@ -5,7 +5,7 @@ source "${ROLI_ROOT_DIR}/.roli.env"
 
 if [ "${#}" == 1 ] && [ "${1}" == "--ci" ]; then
     set -x
-    [ -z "${BUILD_TARGET}" ] && echo "Missing BUILD_TARGET" && exit 1
+    [ -z "${DEPLOYMENT_TYPE}" ] && echo "Missing DEPLOYMENT_TYPE" && exit 1
     [ -z "${IS_PRODUCTION}" ] && echo "Missing IS_PRODUCTION" && exit 1
     [ -z "${IS_TEST}" ] && echo "Missing IS_TEST" && exit 1
     [ -z "${IS_DEV}" ] && echo "Missing IS_DEV" && exit 1
@@ -16,7 +16,7 @@ else
         exit 1
     fi
 
-    export BUILD_TARGET="${1}"
+    export DEPLOYMENT_TYPE="${1}"
 
     if [ "${2}" == "debug" ]; then
         export BUILD_TYPE_L="debug"
@@ -28,7 +28,7 @@ else
     fi
 fi
 
-if [ ! -f "${ROLI_REACT_DIR}/config.${BUILD_TARGET}.${BUILD_TYPE_L}.stamp" ]; then
+if [ ! -f "${ROLI_REACT_DIR}/config.${DEPLOYMENT_TYPE}.${BUILD_TYPE_L}.stamp" ]; then
     echo "error: Must render react configuration first"
     exit 1
 fi
@@ -38,7 +38,7 @@ if [ ! -d "${ROLI_REACT_DIR}/dist" ]; then
     exit 1
 fi
 
-if [ ! -f "${ROLI_CLIENT_DIR}/config.${BUILD_TARGET}.${BUILD_TYPE_L}.stamp" ]; then
+if [ ! -f "${ROLI_CLIENT_DIR}/config.${DEPLOYMENT_TYPE}.${BUILD_TYPE_L}.stamp" ]; then
     echo "error: Must render client configuration first"
     exit 1
 fi
@@ -48,7 +48,7 @@ if [ ! -d "${ROLI_CLIENT_DIR}/dist" ]; then
     exit 1
 fi
 
-if [ ! -f "./config.${BUILD_TARGET}.${BUILD_TYPE_L}.stamp" ]; then
+if [ ! -f "./config.${DEPLOYMENT_TYPE}.${BUILD_TYPE_L}.stamp" ]; then
     echo "error: Must render the configuration first"
     exit 1
 fi
@@ -143,7 +143,7 @@ pushd ${ROLI_REACT_DIR}/dist
 zip -r ${ROLI_TOOLS_DIR}/src/templates/react.zip .
 popd
 
-echo "Building tools for the ${BUILD_TARGET} environment in ${BUILD_TYPE_L} mode"
+echo "Building tools for the ${DEPLOYMENT_TYPE} environment in ${BUILD_TYPE_L} mode"
 
 DIST_DIR=$(readlink -f "./dist")
 rm -rf "${DIST_DIR}"
