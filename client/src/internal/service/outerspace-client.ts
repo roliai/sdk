@@ -54,7 +54,7 @@ export class OuterspaceClientFactory {
 
             let connection: w3cwebsocket;
             if(this.accessToken) {
-                connection = new W3CWebSocket(wsUrl, this.accessToken);
+                connection = new W3CWebSocket(wsUrl, ['roli', this.accessToken]);
             } else {
                 connection = new W3CWebSocket(wsUrl);
             }
