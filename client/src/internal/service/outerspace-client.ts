@@ -64,7 +64,7 @@ export class OuterspaceClientFactory {
             connection.binaryType = 'arraybuffer';
 
             connection.onerror = (e: Error) => {
-                console.error(`W3CWebSocket connection error: ${e.name}\nmessage:${e.message}\nstack:${e.stack}`);
+                console.error(`W3CWebSocket connection error: ${JSON.stringify(e)}`);
             };
             connection.onclose = (event) => {
                 reject(event.reason);
