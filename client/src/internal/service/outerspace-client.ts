@@ -56,7 +56,7 @@ export class OuterspaceClientFactory {
             if(this.accessToken) {
                 connection = new W3CWebSocket(wsUrl, ['roli', this.accessToken]);
             } else {
-                connection = new W3CWebSocket(wsUrl);
+                connection = new W3CWebSocket(wsUrl, 'roli');
             }
 
             //This says this should work in the browser.
