@@ -1,6 +1,7 @@
 import {getApp, initializeApp, FirebaseApp} from "@firebase/app";
 import {
-    getAuth, User, Auth as FirebaseAuth, onAuthStateChanged, signInAnonymously
+    getAuth, User, Auth as FirebaseAuth, onAuthStateChanged, signInAnonymously,
+    signInWithEmailAndPassword
 } from "@firebase/auth";
 import {UserImpl} from "@firebase/auth/internal";
 
@@ -166,6 +167,30 @@ export async function loginWithUserJson(userJsonObj: any): Promise<void> {
     authSession = session;
     
     persistLoginFromUser(user);
+}
+
+export async function loginWithEmailAndPassword(email: string, password: string) : Promise<void> {
+    ensureAuthEnabled();
+
+    if(authSession) {
+        throw new Error("Already logged in");
+    }
+
+    const session = new AuthSession();
+
+    try {
+        await signInWithEmailAndPassword(session.auth, email, password);
+    } catch(e: any) {
+        throw new Error(`Unable to login with email: ${e.message}`);
+    }
+
+    if(!session.user) {
+        throw new Error(`Unable to login because the user didn't exist when expected`);
+    }
+
+    authSession = session;
+
+    persistLoginFromUser(session.user);
 }
 
 export async function loginAnonymously() : Promise<void> {

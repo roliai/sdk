@@ -34,7 +34,7 @@ export async function executeServiceDelete(serviceName: string, interactive: boo
             console.log(chalk.redBright(`CAUTION: THIS WILL ${chalk.yellowBright("DELETE")} THE SERVICE "${chalk.yellowBright(serviceName)}" AND ALL ITS DATA.\n\nThis cannot be undone, even by Roli support.`));
             console.log("");
             console.log("Because this is a destructive operation, you must re-login.")
-            if (!await executeLogin(null, false, false)) {
+            if (!await executeLogin({kind: "interactive"}, false)) {
                 return false;
             }
         } else {

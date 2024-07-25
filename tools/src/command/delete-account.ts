@@ -29,7 +29,7 @@ export async function executeAccountDelete(interactive: boolean): Promise<boolea
         console.log(chalk.redBright(`CAUTION: THIS WILL ${chalk.yellowBright("DELETE")} YOUR ACCOUNT INCLUDING ALL ITS SERVICES AND DATA.\n\nThis cannot be undone, even by Roli support.`));
         console.log("");
         console.log("Because this is a destructive operation, you must re-login.")
-        if (!await executeLogin(null, false, false)) {
+        if (!await executeLogin({kind: "interactive"}, false)) {
             return false;
         }
     } else {

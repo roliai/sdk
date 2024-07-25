@@ -30,7 +30,10 @@ import {
     ENABLE_MEMORY_CAP_TEST,
     ENABLE_METHOD_AND_SERIALIZATION_TEST, 
     DOCTORSNOTES_MODEL_KEY, 
-    DOCTORS_NOTES_MODEL_FILE
+    DOCTORS_NOTES_MODEL_FILE,
+    TEST_ACCOUNT_KIND,
+    TEST_USER,
+    TEST_PASSWORD
 } from "./names"
 import { DEFAULT_ADMIN_SERVICE_BASE_URL, DEFAULT_API_SERVICE_BASE_URL, IS_ENTERPRISE_EDITION } from "./config";
 import {tryOpenAndParse} from "roli-tools/util/config-file";
@@ -61,10 +64,27 @@ async function suite() {
     })
 
     if(IS_ENTERPRISE_EDITION) {
-        await test('login with anonymous account', async function () {
-            if(!await executeLogin(null, true, true))
-                throw new Error("login failed");
-        });
+        if(TEST_ACCOUNT_KIND === "anonymous") {
+            await test('login with anonymous account', async function () {
+                if(!await executeLogin({kind: 'anonymous'}, true))
+                    throw new Error("anonymous login failed");
+            });
+        } else if(TEST_ACCOUNT_KIND === "email") {
+            await test('login with test email account', async function () {
+                const username = TEST_USER;
+                if(!username || typeof username !== "string")
+                    throw new Error("missing username");
+                
+                const password = TEST_PASSWORD;
+                if(!password || typeof password !== "string")
+                    throw new Error("missing password");
+
+                if(!await executeLogin({kind: 'email', username: username, password: password}, true))
+                    throw new Error("test email account login failed");
+            });
+        } else {
+            throw new Error("invalid test account kind");
+        }
     }
 
     await test('setup services', async function () {

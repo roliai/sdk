@@ -11,7 +11,8 @@ import {createLogContext} from "../util/log-context";
 import {
     overrwriteLogin,
     loginWithUserJson,
-    getIsLoggedInUserAnonymous, loginAnonymously
+    getIsLoggedInUserAnonymous, loginAnonymously,
+    loginWithEmailAndPassword
 } from "../service/auth";
 
 import {HostURL} from "@webcontainer/env";
@@ -29,7 +30,16 @@ export function createLoginCommand(before: any) : Command {
                 before();
             }
 
-            if (await executeLogin(opts.loginFile, true, opts.anonymous)) {
+            let login;
+            if(opts.anonymous) {
+                login = <AnonymousLogin>{kind: "anonymous"};
+            } else if(opts.loginFile) {
+                login = <FileLogin>{kind: 'file', file: opts.loginFile};
+            } else {
+                login = <InteractiveLogin>{kind: 'interactive'};
+            }
+
+            if (await executeLogin(login, true)) {
                 process.exit(0);
             } else {
                 process.exit(1);
@@ -107,18 +117,40 @@ function startCallbackServer(startingPort: number, callback: (loginData: LoginDa
     });
 }
 
-export async function executeLogin(file: string | null = null, log: boolean, anonymousOnly: boolean): Promise<boolean> {
-    if (file) {
-        if(!await overrwriteLogin(file))
+export interface InteractiveLogin {
+    kind: 'interactive';
+}
+
+export interface FileLogin {
+    kind: 'file';
+    file: string;
+}
+
+export interface AnonymousLogin {
+    kind: 'anonymous';
+}
+
+export interface EmailLogin {
+    kind: 'email';
+    username: string;
+    password: string;
+}
+
+export async function executeLogin(login: FileLogin | AnonymousLogin | EmailLogin | InteractiveLogin, log: boolean): Promise<boolean> {
+    if(login.kind === "file") {
+        if(!await overrwriteLogin(login.file))
             return false;
         if(log)
             logOk("Login");
         return true;
     }
-
-    if(anonymousOnly) {
+    else if(login.kind === "anonymous") {
         await loginAnonymously();
-    } else {
+    }
+    else if(login.kind === "email") {
+        await loginWithEmailAndPassword(login.username, login.password);
+    }
+    else if(login.kind === "interactive") {
         let called = false;
         let loginData: LoginData;
 
@@ -152,6 +184,10 @@ export async function executeLogin(file: string | null = null, log: boolean, ano
         }
 
         await loginWithUserJson(loginData.user);
+    }
+    else {
+        logLocalError("Invalid login kind");
+        return false;
     }
 
     const logContext = createLogContext();
