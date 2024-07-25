@@ -24,6 +24,8 @@ export function executeGetConnectionInfo(): boolean {
     console.log(`${getColor(chalk.bold, 'Enterprise: ')}${getColor(connectionInfoFile.isEnterprise ? chalk.greenBright : chalk.yellowBright, connectionInfoFile.isEnterprise.toString())}`);
     console.log(`${getColor(chalk.bold, 'Admin URL: ')}${getColor(chalk.magentaBright , connectionInfoFile.adminBaseUrl)}`);
     console.log(`${getColor(chalk.bold, 'Api URL: ')}${getColor(chalk.blueBright , connectionInfoFile.apiBaseUrl)}`);
+    console.log(`${getColor(chalk.bold, 'Login URL: ')}${getColor(chalk.blueBright , connectionInfoFile.loginUrl)}`);
+    console.log(`Cmd: ${getColor(chalk.gray, `roli set-connection-info admin=${connectionInfoFile.adminBaseUrl} api=${connectionInfoFile.apiBaseUrl} login=${connectionInfoFile.loginUrl} ${connectionInfoFile.isEnterprise ? "--enterprise" : ""}`)}`);
     console.log();
     return true;
 }

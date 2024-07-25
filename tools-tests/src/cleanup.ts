@@ -12,7 +12,8 @@ import {
     ENABLE_EXERCISE_TRACKER_TEST,
     ENABLE_MEMORY_CAP_TEST,
     ENABLE_METHOD_AND_SERIALIZATION_TEST,
-    DOCTORSNOTES_MODEL_KEY
+    DOCTORSNOTES_MODEL_KEY,
+    TEST_ACCOUNT_KIND
 } from "./names"
 import {IS_ENTERPRISE_EDITION} from "./config";
 import {isLoggedIn} from "./util/util";
@@ -86,10 +87,15 @@ async function suite() {
     }
 
     if(IS_ENTERPRISE_EDITION) {
-        await test('delete account', async function(){
-            if (!await executeAccountDelete(false) && !IS_PRE_CLEANUP)
-                throw new Error("unable to delete anonymous account");
-        });
+        if(TEST_ACCOUNT_KIND === "anonymous") {
+            await test('delete account', async function(){
+                if (!await executeAccountDelete(false) && !IS_PRE_CLEANUP)
+                    throw new Error("unable to delete anonymous account");
+            });
+        }
+        else {
+            console.log("Not deleting test account");
+        }
     }
 }
 

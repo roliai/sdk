@@ -23,7 +23,7 @@ const CALLBACK_SERVER_START_PORT=3080;
 export function createLoginCommand(before: any) : Command {
     return new Command('login')
         .description('Login to Roli')
-        .option('--login-file=<file>', "Log in using the specific login file")
+        .option('--file <file>', "Log in using the specific login file")
         .option('--anonymous', "Login anonymously. Anonymous accounts are removed after 4 hours.")
         .action(async (opts: any) => {
             if (before) {
@@ -33,8 +33,8 @@ export function createLoginCommand(before: any) : Command {
             let login;
             if(opts.anonymous) {
                 login = <AnonymousLogin>{kind: "anonymous"};
-            } else if(opts.loginFile) {
-                login = <FileLogin>{kind: 'file', file: opts.loginFile};
+            } else if(opts.file) {
+                login = <FileLogin>{kind: 'file', file: opts.file};
             } else {
                 login = <InteractiveLogin>{kind: 'interactive'};
             }
