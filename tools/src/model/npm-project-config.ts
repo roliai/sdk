@@ -26,8 +26,7 @@ export class NpmProjectConfig {
     }
 
     public get hasReact() {
-        // @ts-ignore
-        return this.dependencies["react"] !== undefined;
+        return this.dependencies && Object.hasOwn(<{}>this.dependencies, "react");
     }
 
     public get configFile() {
