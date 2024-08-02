@@ -35,44 +35,47 @@ export enum Code {
     Datastore_MustGetLatestObject = 32,
     Datastore_DuplicateObject = 33,
     Datastore_ObjectInstanceCorrupted = 34,
-    Datastore_ObjectPropertiesIndexCorrupted = 35,
-    Datastore_ClientHasVersionInvalid = 36,
-    Datastore_UnableToOpen = 37,
-    Datastore_UnableToCreateDirectory = 38,
-    Datastore_UnknownSystemError = 39,
-    Datastore_DeletedFlagExists = 40,
-    Datastore_DeletedFileExists = 41,
-    Datastore_FailedToSetInitialServiceVersion = 42,
-    Datastore_ServiceIndexCorrupted = 43,
-    Datastore_ServiceSourceCorrupted = 44,
-    Datastore_ServiceIndexNotFound = 45,
-    Datastore_ServiceSourceNotFound = 46,
-    Datastore_ServiceAuthorizationCorrupted = 47,
-    Validator_ClientMustUpgrade = 49,
-    Validator_InvalidFlatbuffer = 50,
-    Validator_Forbidden = 51,
-    Validator_PrimaryKeyTooLarge = 52,
-    Validator_PrimaryKeyTooSmall = 53,
-    Validator_InvalidRequest = 54,
-    Innerspace_ConnectionFault = 57,
-    Innerspace_RequestTooLarge = 58,
-    Innerspace_Shutdown = 59,
-    Innerspace_UnableToResolveHostPort = 60,
-    Innerspace_NoEndpoints = 61,
-    Launcher_TimedOutWhileGettingService = 63,
-    Launcher_FailedToSpawnService = 64,
-    Service_ServiceDeleted = 66,
-    HttpCallFactory_InvalidHostPort = 67,
-    HttpCall_UnableToSetClientHostname = 68,
-    HttpCall_FailedToResolveHostname = 69,
-    HttpCall_UnableToConnect = 70,
-    HttpCall_UnableToPerformSslHandshake = 71,
-    HttpCall_FailedToWriteToServerStream = 72,
-    HttpCall_FailedToReadFromServerStream = 73,
-    Config_InvalidKey = 74,
-    Config_ValueNotFound = 75,
-    AccessDenied = 88,
-    NotAuthorized = 89
+    Datastore_ObjectInstanceIncorrectClassId = 35,
+    Datastore_ObjectInstanceIncorrectPrimaryKey = 36,
+    Datastore_ObjectPropertiesIndexCorrupted = 37,
+    Datastore_FindSessionsIterationFailed = 38,
+    Datastore_ClientHasVersionInvalid = 39,
+    Datastore_UnableToOpen = 40,
+    Datastore_UnableToCreateDirectory = 41,
+    Datastore_UnknownSystemError = 42,
+    Datastore_DeletedFlagExists = 43,
+    Datastore_DeletedFileExists = 44,
+    Datastore_FailedToSetInitialServiceVersion = 45,
+    Datastore_ServiceIndexCorrupted = 46,
+    Datastore_ServiceSourceCorrupted = 47,
+    Datastore_ServiceIndexNotFound = 48,
+    Datastore_ServiceSourceNotFound = 49,
+    Datastore_ServiceAuthorizationCorrupted = 50,
+    Validator_ClientMustUpgrade = 52,
+    Validator_InvalidFlatbuffer = 53,
+    Validator_Forbidden = 54,
+    Validator_PrimaryKeyTooLarge = 55,
+    Validator_PrimaryKeyTooSmall = 56,
+    Validator_InvalidRequest = 57,
+    Innerspace_ConnectionFault = 60,
+    Innerspace_RequestTooLarge = 61,
+    Innerspace_Shutdown = 62,
+    Innerspace_UnableToResolveHostPort = 63,
+    Innerspace_NoEndpoints = 64,
+    Launcher_TimedOutWhileGettingService = 66,
+    Launcher_FailedToSpawnService = 67,
+    Service_ServiceDeleted = 69,
+    HttpCallFactory_InvalidHostPort = 70,
+    HttpCall_UnableToSetClientHostname = 71,
+    HttpCall_FailedToResolveHostname = 72,
+    HttpCall_UnableToConnect = 73,
+    HttpCall_UnableToPerformSslHandshake = 74,
+    HttpCall_FailedToWriteToServerStream = 75,
+    HttpCall_FailedToReadFromServerStream = 76,
+    Config_InvalidKey = 77,
+    Config_ValueNotFound = 78,
+    AccessDenied = 91,
+    NotAuthorized = 92
 }
 
 export function getCodeName(code: Code) {
@@ -145,8 +148,14 @@ export function getCodeName(code: Code) {
             return 'Datastore_DuplicateObject';
         case Code.Datastore_ObjectInstanceCorrupted:
             return 'Datastore_ObjectInstanceCorrupted';
+        case Code.Datastore_ObjectInstanceIncorrectClassId:
+            return 'Datastore_ObjectInstanceIncorrectClassId';
+        case Code.Datastore_ObjectInstanceIncorrectPrimaryKey:
+            return 'Datastore_ObjectInstanceIncorrectPrimaryKey';
         case Code.Datastore_ObjectPropertiesIndexCorrupted:
             return 'Datastore_ObjectPropertiesIndexCorrupted';
+        case Code.Datastore_FindSessionsIterationFailed:
+            return 'Datastore_FindSessionsIterationFailed';
         case Code.Datastore_ClientHasVersionInvalid:
             return 'Datastore_ClientHasVersionInvalid';
         case Code.Datastore_UnableToOpen:
