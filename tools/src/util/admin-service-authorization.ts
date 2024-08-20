@@ -1,14 +1,13 @@
 import {createLogContext} from "./log-context";
 import {AdminSingleton} from "../service/admin";
-import {Unsigned} from "./unsigned";
 import {logRemoteError} from "./logging";
 
 export class AdminServiceAuthorization {
     constructor(public adminKey: string,
                 public serviceName: string,
-                public serviceId: Unsigned,
+                public serviceId: bigint,
                 public serviceIdStr: string,
-                public serviceVersion: Unsigned,
+                public serviceVersion: bigint,
                 public serviceVersionStr: string) {
     }
 }
@@ -23,12 +22,12 @@ export async function tryGetAdminServiceAuthorization(serviceName: string) : Pro
     try {
         const resp = await AdminSingleton.getAdminKey(logContext, serviceName);
         serviceIdStr = resp.serviceIdStr;
-        if (!Unsigned.tryParse(serviceIdStr)) {
+        if (!BigInt(serviceIdStr)) {
             logRemoteError(logContext, "Invalid serviceId returned");
             return null;
         }
         serviceVersionStr = resp.serviceVersionStr;
-        if (!Unsigned.tryParse(serviceVersionStr)) {
+        if (!BigInt(serviceVersionStr)) {
             logRemoteError(logContext, "Invalid serviceVersion returned");
             return null;
         }
@@ -50,12 +49,12 @@ export async function tryGetAdminServiceAuthorization(serviceName: string) : Pro
             logRemoteError(logContext, "Expired adminKey returned");
             return null;
         }
-        const serviceId = Unsigned.tryParse(serviceIdStr);
+        const serviceId = BigInt(serviceIdStr);
         if (!serviceId) {
             logRemoteError(logContext,"Invalid serviceId returned");
             return null;
         }
-        const serviceVersion = Unsigned.tryParse(serviceVersionStr);
+        const serviceVersion = BigInt(serviceVersionStr);
         if (!serviceVersion) {
             logRemoteError(logContext,"Invalid serviceVersionId returned");
             return null;

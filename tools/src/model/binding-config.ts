@@ -2,8 +2,6 @@ import {requiresTruthy} from "../util/requires";
 import fs from "fs";
 import path from "path";
 import {logLocalError, logVerbose} from "../util/logging";
-import {parseJsonFromFile} from "../util/json-parse";
-import { Unsigned, UnsignedOne } from "../util/unsigned";
 import { serviceNameValidator } from "../util/validators";
 import { tryOpenAndParse, validateConfigVersion, writeToFile } from "../util/config-file";
 
@@ -20,10 +18,10 @@ export class BindingConfig {
     constructor(
         public loadedFromDir: string,
         public serviceName: string,
-        public serviceVersion: Unsigned) {
+        public serviceVersion: bigint) {
         requiresTruthy('loadedFromDir', loadedFromDir);
         requiresTruthy('serviceName', serviceName);
-        if(!serviceVersion || serviceVersion < UnsignedOne) {
+        if(!serviceVersion || serviceVersion < BigInt(1)) {
             throw new Error('invalid service version. Must be greater than or equal to 1.');
         }
         this.configVersion = CONFIG_VERSION;
@@ -73,8 +71,8 @@ export class BindingConfig {
             return null;
         }
 
-        const serviceVersion = Unsigned.tryParse(fileObj.serviceVersion);
-        if(!serviceVersion || serviceVersion < UnsignedOne)  {
+        const serviceVersion = BigInt(fileObj.serviceVersion);
+        if(!serviceVersion || serviceVersion < BigInt(1))  {
             logLocalError("Invalid service version. Must be greater than or equal to 1.");
             return null;
         }

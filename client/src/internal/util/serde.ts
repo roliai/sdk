@@ -1,8 +1,7 @@
 import {Builder, ByteBuffer, Offset} from "flatbuffers";
 
-import {requiresAtLeastOneElement, requiresPositiveUnsigned, requiresTruthy} from "./requires.js";
+import {requiresAtLeastOneElement, requiresPositiveBigInt, requiresTruthy} from "./requires.js";
 import {DataRegistry, EndpointRegistry, SessionRegistry} from "./registry.js";
-import {Unsigned, UnsignedOne, UnsignedZero} from "./unsigned.js";
 import {getEnableVerboseLogging, logError, logVerbose, sysLogError} from "./logging.js";
 import {getCodeName, Code} from "../code.js";
 import {DataProto} from "../protocol/data-proto.js";
@@ -198,7 +197,7 @@ export class RequestFactory {
 
         let objectVersion = this.dataContext.tryGetVersion(data);
         if (!objectVersion) {
-            objectVersion = UnsignedZero;
+            objectVersion = BigInt(0);
         }
 
         //note: since the client can't know what properties have changed, I send all of them and let the server figure it out.
@@ -221,7 +220,7 @@ export class RequestFactory {
 
         const properties_off = DataProto.createPropertiesVector(builder, properties);
 
-        return InboundDataDeltaProto.createInboundDataDeltaProto(builder, classKey.classId, objectVersion.toLong(),
+        return InboundDataDeltaProto.createInboundDataDeltaProto(builder, classKey.classId, objectVersion,
             builder.createString(data.primaryKey), properties_off, 0);
     }
 
@@ -333,10 +332,10 @@ export class RequestFactory {
         }
     }
 
-    private createRequest(b: Builder | number, logContext: string, serviceId: Unsigned, serviceVersion: Unsigned, kind: UserRequestUnionProto, createInner: CreateInnerFunction): Uint8Array {
+    private createRequest(b: Builder | number, logContext: string, serviceId: bigint, serviceVersion: bigint, kind: UserRequestUnionProto, createInner: CreateInnerFunction): Uint8Array {
         requiresTruthy('logContext', logContext);
-        requiresPositiveUnsigned('serviceId', serviceId);
-        requiresPositiveUnsigned('serviceVersion', serviceVersion);
+        requiresPositiveBigInt('serviceId', serviceId);
+        requiresPositiveBigInt('serviceVersion', serviceVersion);
 
         const builder = typeof b === 'number' ? new Builder(b) : b;
 
@@ -344,8 +343,8 @@ export class RequestFactory {
             builder,
             API_PROTOCOL_VERSION,
             builder.createString(logContext),
-            serviceId.toLong(),
-            serviceVersion.toLong(),
+            serviceId,
+            serviceVersion,
             kind,
             createInner(builder)
         );
@@ -968,12 +967,12 @@ export class ResponseReader {
 
         const objectKey = createDataKeyFromDelta(serviceKey, deltaProto);
 
-        const deltaObjectVersion = Unsigned.fromLong(deltaProto.objectVersion());
-        if (!deltaObjectVersion || deltaObjectVersion.equals(UnsignedZero))
+        const deltaObjectVersion = deltaProto.objectVersion();
+        if (!deltaObjectVersion || deltaObjectVersion === BigInt(0))
             throw new Error(logError(logContext, 'Unable to merge service object because the object version was zero or invalid'));
 
         let existingObject = this.dataContext.tryGetInstance(objectKey);
-        let existingObjectVersion: Unsigned | undefined;
+        let existingObjectVersion: bigint | undefined;
         if (existingObject)
             existingObjectVersion = this.dataContext.tryGetVersion(existingObject);
 
@@ -985,7 +984,7 @@ export class ResponseReader {
             }
             tracker.dataDeleteQueue.enqueue(objectKey);
             logVerbose(logContext, `Delta applied: Object ${objectKey.getFullyQualifiedName()} deleted.`);
-        } else if (!existingObjectVersion && deltaObjectVersion.equals(UnsignedOne)) {
+        } else if (!existingObjectVersion && deltaObjectVersion === BigInt(1)) {
             // New version (may have an existing object if they've created it locally)
             let object = existingObject;
             if (!object) {
@@ -993,13 +992,13 @@ export class ResponseReader {
                 this.dataContext.setInstance(objectKey, object);
             }
             this.mergeDeltaProperties(logContext, object, serviceKey, objectKey, deltaProto, tracker);
-            this.dataContext.setVersion(object, UnsignedOne);
+            this.dataContext.setVersion(object, BigInt(1));
             tracker.dataUpdatedFiringQueue.enqueue(object, false);
             if (existingObject)
                 logVerbose(logContext, `Delta applied: Locally created object ${objectKey.getFullyQualifiedName()} updated to verson 1.`);
             else
                 logVerbose(logContext, `Delta applied: Object ${objectKey.getFullyQualifiedName()} created.`);
-        } else if (existingObjectVersion && deltaObjectVersion.value === (existingObjectVersion.value + BigInt(1))) {
+        } else if (existingObjectVersion && deltaObjectVersion === (existingObjectVersion + BigInt(1))) {
             // Updated
             if (!existingObject)
                 throw new Error("Unexpectedly the existing object was empty when the existing object version was found.");
@@ -1032,8 +1031,8 @@ export class ResponseReader {
 
         const classKey = new DataClassKey(serviceKey, objectProto.classId());
 
-        const objectVersion = Unsigned.fromLong(objectProto.objectVersion());
-        if (objectVersion.equals(UnsignedZero))
+        const objectVersion = objectProto.objectVersion();
+        if (objectVersion === BigInt(0))
             throw new Error(logError(logContext, 'Unable to load service object because the object version was zero or invalid'));
 
         const primaryKey = objectProto.primaryKey();

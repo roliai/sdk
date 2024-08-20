@@ -1,4 +1,4 @@
-import {Unsigned} from "../src/util/unsigned";
+import {Unsigned} from "../src/internal/util/unsigned";
 
 const ULONG_MAX_STR = "18446744073709551615";
 

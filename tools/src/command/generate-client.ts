@@ -14,7 +14,6 @@ import {
 import inquirer from "inquirer";
 import { NpmProjectConfig } from "../model/npm-project-config";
 import {authEnabled, loginWithStoredCredentials} from "../service/auth";
-import { Unsigned, UnsignedOne } from "../util/unsigned";
 import {addServicePackageDependency} from "../util/package-json.js";
 
 export function createGenerateClientCommand(before: any): Command {
@@ -120,9 +119,9 @@ export async function executeGenerateClient(
         
         return true;
     } else {
-        let version: Unsigned | null = null;
+        let version: bigint | null = null;
         if(versionStr) {
-            version = Unsigned.tryParse(versionStr);
+            version = BigInt(versionStr);
             if(!version) {
                 logLocalError("Invalid version specified");
                 return false;
@@ -134,7 +133,7 @@ export async function executeGenerateClient(
 async function generateClient(
     projectConfig: NpmProjectConfig, 
     serviceName: string, 
-    serviceVersion: Unsigned | null,
+    serviceVersion: bigint | null,
     install: boolean,
     log: boolean,
     forceReact: boolean) : Promise<boolean> {
@@ -144,7 +143,7 @@ async function generateClient(
         return false;
     }
 
-    if(serviceVersion && serviceVersion < UnsignedOne) {
+    if(serviceVersion && serviceVersion < BigInt(1)) {
         logLocalError("Invalid service version. Must be greater than or equal to 1.");
         return false;
     }
@@ -166,10 +165,10 @@ async function generateClient(
 
     logVerbose('Service index retrieved and validated')
 
-    const updatedServiceVersion = Unsigned.fromLong(serviceIndex.serviceVersion());
-    const connectedServiceVersion = Unsigned.tryParse(response.serviceVersionStr)!;
+    const updatedServiceVersion = serviceIndex.serviceVersion();
+    const connectedServiceVersion = BigInt(response.serviceVersionStr)!;
 
-    if(updatedServiceVersion.value !== connectedServiceVersion.value) {
+    if(updatedServiceVersion !== connectedServiceVersion) {
         logLocalError(`Unexpectedly the index version ${updatedServiceVersion} and the service version ${connectedServiceVersion} were different`);
         return false;
     }

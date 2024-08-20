@@ -1,8 +1,7 @@
 import {sysLogError} from "./logging.js";
-import {Unsigned, UnsignedZero} from "./unsigned.js";
 
-export function requiresPositiveUnsigned(name: string, value: Unsigned | undefined) {
-    if(!value || value.equals(UnsignedZero)) {
+export function requiresPositiveBigInt(name: string, value: bigint | undefined) {
+    if(!value || value === BigInt(0)) {
         throw new Error(sysLogError(`${name} was <= 0 or empty`));
     }
 }

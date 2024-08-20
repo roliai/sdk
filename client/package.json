@@ -23,11 +23,10 @@
     }
   },
   "dependencies": {
-    "flatbuffers": "2.0.4",
+    "flatbuffers": "24.3.25",
     "websocket": "^1.0.34"
   },
   "devDependencies": {
-    "@types/flatbuffers": "^1.10.0",
     "@types/jest": "^26.0.23",
     "@types/node": "^18.11.17",
     "@types/websocket": "^1.0.1",

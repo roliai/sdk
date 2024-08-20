@@ -1,5 +1,4 @@
-import {Unsigned} from "./util/unsigned.js";
-import {requiresPositiveUnsigned, requiresTruthy} from "./util/requires.js";
+import {requiresPositiveBigInt, requiresTruthy} from "./util/requires.js";
 import {sysLogError} from "./util/logging.js";
 import {Code} from "./code.js";
 
@@ -16,7 +15,7 @@ import {ServiceReferenceUnionProto} from "./protocol/service-reference-union-pro
 
 export type ServiceIdString = string;
 export type ServiceVersionString = string;
-export type DataVersion = Unsigned;
+export type DataVersion = bigint;
 export type DataKeyString = string;
 export type EndpointKeyString = string;
 export type SessionKeyString = string;
@@ -137,9 +136,9 @@ export const __ServiceKey_NameGetter = Symbol("Service key name getter");
 export class ServiceKey implements IKey {
     public readonly value: ServiceKeyString;
 
-    constructor(public readonly serviceId: Unsigned, public readonly serviceVersion: Unsigned) {
-        requiresPositiveUnsigned('serviceId', serviceId);
-        requiresPositiveUnsigned('serviceVersion', serviceVersion);
+    constructor(public readonly serviceId: bigint, public readonly serviceVersion: bigint) {
+        requiresPositiveBigInt('serviceId', serviceId);
+        requiresPositiveBigInt('serviceVersion', serviceVersion);
         this.value = `${ServiceKey.name}-${this.serviceId.toString()}@${this.serviceVersion.toString()}`;
     }
 

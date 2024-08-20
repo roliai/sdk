@@ -3,7 +3,6 @@ import fs from "fs";
 import {logLocalError, logRemoteError} from "./logging";
 import {getApiUrl} from "../model/connection-info-file";
 import Mustache from "mustache";
-import {Unsigned, UnsignedZero} from "./unsigned";
 import {requiresTruthy} from "./requires";
 import {ServiceIndexProto} from "../protocol/service-index-proto";
 import {DataClassProto} from "../protocol/data-class-proto";
@@ -82,12 +81,12 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
     if (!serviceName)
         throw new Error(logRemoteError(logContext, 'Unable to read service index because the name was empty'));
 
-    const serviceId = Unsigned.fromLong(serviceIndex.serviceId());
-    if (serviceId.equals(UnsignedZero))
+    const serviceId = serviceIndex.serviceId();
+    if (serviceId === BigInt(0))
         throw new Error(logRemoteError(logContext, 'Unable to read service index because the service id was invalid'));
 
-    const serviceVersion = Unsigned.fromLong(serviceIndex.serviceVersion());
-    if (serviceVersion.equals(UnsignedZero))
+    const serviceVersion = serviceIndex.serviceVersion();
+    if (serviceVersion === BigInt(0))
         throw new Error(logRemoteError(logContext, 'Unable to read service index because the service version was invalid'));
 
     let serviceRegistration = Mustache.render(serviceRegisterTemplate, {
@@ -220,7 +219,7 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
 
             const methodArguments = [];
             for (let k = 0; k < callableMethod.argumentsLength(); ++k) {
-                const methodArgument = callableMethod.arguments(k, new MethodArgumentProto());
+                const methodArgument = callableMethod.arguments_(k, new MethodArgumentProto());
                 if (!methodArgument)
                     throw new Error(logRemoteError(logContext, 'Unable to read callable method argument from the service index because it contained invalid data'));
                 const methodArgumentName = methodArgument.name();
@@ -328,7 +327,7 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
 
 function generateRootPackage(react: boolean,
                              packageName: string,
-                             serviceVersion: Unsigned,
+                             serviceVersion: bigint,
                              clientPackageName: string,
                              reactPackageName?: string): string {
     requiresTruthy('packageName', packageName);
@@ -440,8 +439,8 @@ export async function createOrUpdateBinding(
         packageName = canonicalServiceName;
     }
 
-    const serviceVersion = Unsigned.fromLong(serviceIndex.serviceVersion());
-    if (serviceVersion.equals(UnsignedZero))
+    const serviceVersion = serviceIndex.serviceVersion();
+    if (serviceVersion === BigInt(0))
         throw new Error(logLocalError(`Invalid service version`));
 
 

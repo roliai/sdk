@@ -1,8 +1,7 @@
 import {DataKey, KeyMap, EventInstanceKey, ServiceKey} from "../internal-model-types.js";
 import {Data, DataUpdateListener, Event, EventListener} from "../../public/model-types.js";
-import {Unsigned} from "./unsigned.js";
-import {requiresPositiveUnsigned, requiresTruthy} from "./requires.js";
-import {sysLogError, sysLogInfo, sysLogVerbose} from "./logging.js";
+import {requiresPositiveBigInt, requiresTruthy} from "./requires.js";
+import {sysLogError, sysLogVerbose} from "./logging.js";
 import {createRef, RefShim} from "./ref.js";
 import {ApiClientFactory, ApiClient} from "../service/api-client.js";
 import {EventRegistry, ServiceRegistry} from "./registry.js";
@@ -90,7 +89,7 @@ export class ServiceContext {
  */
 export class DataContext {
     private readonly _dataKeyToDataRef: KeyMap<DataKey, RefShim<Data>> = new KeyMap<DataKey, RefShim<Data>>();
-    private readonly _weakDataToVersion: WeakMap<Data, Unsigned> = new WeakMap<Data, Unsigned>();
+    private readonly _weakDataToVersion: WeakMap<Data, bigint> = new WeakMap<Data, bigint>();
     private readonly _weakDataToDataKey: WeakMap<Data, DataKey> = new WeakMap<Data, DataKey>();
     private _weakDataToUpdatedListeners: WeakMap<Data, Array<AnyDataUpdateListener>> = new WeakMap<Data, Array<AnyDataUpdateListener>>();
     // synthetic ID used to troubleshoot object versioning problems
@@ -100,13 +99,13 @@ export class DataContext {
         sysLogVerbose(`DataContext created: ${this._id}`);
     }
 
-    public tryGetVersion(data: Data): Unsigned | undefined {
+    public tryGetVersion(data: Data): bigint | undefined {
         return this._weakDataToVersion.get(data);
     }
 
-    public setVersion(data: Data, version: Unsigned) {
+    public setVersion(data: Data, version: bigint) {
         requiresTruthy('data', data);
-        requiresPositiveUnsigned('version', version);
+        requiresPositiveBigInt('version', version);
         this._weakDataToVersion.set(data, version);
     }
 

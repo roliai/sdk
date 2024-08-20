@@ -18,7 +18,6 @@ import {
 } from "../internal-model-types.js";
 import {sysLogError} from "./logging.js";
 import {requiresFalsy, requiresTruthy} from "./requires.js";
-import {Unsigned} from "./unsigned.js";
 import {
     Data,
     Endpoint,
@@ -61,7 +60,7 @@ export class TypeRegistryBuilder {
 
     registerService(name: string, admin: boolean, authKey: string, serviceIdString: string, serviceVersionString: string): ServiceKey {
         requiresFalsy("built", this._built);
-        const serviceKey = new ServiceKey(new Unsigned(serviceIdString), new Unsigned(serviceVersionString));
+        const serviceKey = new ServiceKey(BigInt(serviceIdString), BigInt(serviceVersionString));
         this._service.register(new ServiceRegistration(name, serviceKey, admin, authKey));
         return serviceKey;
     }
@@ -289,7 +288,7 @@ export class ServiceRegistry {
         return this._serviceKeyToServiceRegistration.get(serviceKey).name;
     }
 
-    public tryGetServiceKeyByServiceId(serviceId: Unsigned): ServiceKey | undefined {
+    public tryGetServiceKeyByServiceId(serviceId: bigint): ServiceKey | undefined {
         requiresTruthy('serviceId', serviceId);
         return this._serviceIdToServiceKey.get(serviceId.toString());
     }
@@ -301,7 +300,7 @@ export class ServiceRegistry {
         if (expected.equals(other))
             return; //OK
 
-        if (expected.serviceId.equals(other.serviceId)) {
+        if (expected.serviceId === other.serviceId) {
             //the version has changed, making this client incompatible.
             const service_name = this.getName(expected);
             throw new Error(sysLogError(`The service client for ${service_name} is out of date and must be re-generated.`));

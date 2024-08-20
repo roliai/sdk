@@ -45,6 +45,14 @@ async function suite(targetType, isEndpoint) {
         assert.typeValue(value, "string", "something");
     });
 
+    await test('Can pass & receive big object', async function (params) {
+        // Background: This comes from a bug found with CarTechIQ's service
+        const json = `{"model":{"type":"vehicleFaults","version":"v2.0","aiModel":"miq-0624-v1"},"vin":"vin","vehicle":{"year":2019,"make":"MINI","model":"COOPER","manufacturer":"BMW","engine":"L4, 2.0L; DOHC; 16V; DI","trim":"S COUNTRYMAN ALL4","transmission":"STANDARD","odometer":"50620","remark":""},"location":{"lat":"40.712812","lon":"-74.006012"},"deviceId":"dfhueyriwery3i38rhkshf","showExtendedResults":true,"postbackUrl":"https://ctiq-api.azure-api.net/app/webhook/dfhueyriwery3i38rhkshf","faults":["C0750"]}`;
+        const obj = JSON.parse(json);
+        const comp = await target.testObject(obj);
+        assert.deepEqual(comp, obj);
+    })
+
     await test('Can pass & receive object', async function () {
         const metadata = new Metadata("something" + nameSuffix);
         const endpoint = new OtherEndpoint("nothing" + nameSuffix);

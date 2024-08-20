@@ -6,7 +6,6 @@ import {ServiceClassMapping} from "../model/service-config";
 import {ADMIN_TOOLS_PROTOCOL_VERSION} from "../config";
 import {logLocalError, logVerbose} from "../util/logging";
 import {getIdToken, logout} from "./auth";
-import {Unsigned} from "../util/unsigned";
 import {getAdminApiUrl, getIsEnterprise} from "../model/connection-info-file";
 
 export interface PermissionAssignment {
@@ -237,7 +236,7 @@ export class Admin {
         }
     }
 
-    public async getServiceConnectionInfo(logContext: string, serviceName: string, version: Unsigned | null): Promise<GetServiceConnectionInfoResponse> {
+    public async getServiceConnectionInfo(logContext: string, serviceName: string, version: bigint | null): Promise<GetServiceConnectionInfoResponse> {
         try {
             let versionOption = "";
             if (version) {

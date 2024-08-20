@@ -1,7 +1,6 @@
 import {ByteBuffer} from "flatbuffers";
 
 import {requiresTruthy} from "../util/requires.js";
-import {Unsigned} from "../util/unsigned.js";
 import {OuterspaceClient, OuterspaceClientFactory} from "./outerspace-client.js";
 import {logVerbose, logDebug, logError, sysLogError} from "../util/logging.js";
 import {ServiceRegistry} from "../util/registry.js";
@@ -75,7 +74,7 @@ export class ApiClientFactory {
                 if (!logContext)
                     throw new Error(sysLogError('Unable to read message because it contained an empty log context'));
 
-                const otherServiceKey = new ServiceKey(Unsigned.fromLong(apiUserMessage.serviceId()), Unsigned.fromLong(apiUserMessage.serviceVersion()));
+                const otherServiceKey = new ServiceKey(apiUserMessage.serviceId(), apiUserMessage.serviceVersion());
 
                 const message = apiUserMessage.message();
                 if (!message)
