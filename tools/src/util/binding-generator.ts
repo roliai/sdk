@@ -76,6 +76,8 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
     const sessionTemplate = readTemplate("session.mustache");
     const sessionRegisterTemplate = readTemplate("session-register.mustache");
     const sessionMethodTemplate = readTemplate("session-method.mustache");
+    const freeFunctionTemplate = readTemplate("free-function.mustache");
+    const freeClassTemplate = readTemplate("free-class.mustache");
 
     const serviceName = serviceIndex.serviceName();
     if (!serviceName)
@@ -103,12 +105,20 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
             throw new Error(logRemoteError(logContext, 'Unable to read free function from the service index because it contained invalid data'));
         const code = freeFunction.sourceCode();
         if (!code)
-            throw new Error(logRemoteError(logContext, 'Unable to read free function from the service index because the source code was empty'))
-        freeFunctions.push(code);
+            throw new Error(logRemoteError(logContext, 'Unable to read free function from the service index because the source code was empty'))       
+        
         const functionName = freeFunction.functionName();
         if (!functionName)
             throw new Error(logRemoteError(logContext, 'Unable to read free function from the service index because the function name was empty'));
-        clientExports.push(functionName);
+        
+        const exported = freeFunction.exported();
+        if(exported)
+            clientExports.push(functionName);
+
+        freeFunctions.push(Mustache.render(freeFunctionTemplate, {
+            ESM_EXPORT: (exported && isEsm) ? "export " : "",
+            CODE: code
+        }));
     }
 
     let freeClasses = [];
@@ -124,8 +134,15 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
         if (!className)
             throw new Error(logRemoteError(logContext, 'Unable to read free class name from the service index because it contained invalid data'));
 
-        clientExports.push(className);
-        freeClasses.push(code);
+        const exported = freeClass.exported();
+
+        if(exported)
+            clientExports.push(className);
+
+        freeClasses.push(Mustache.render(freeClassTemplate, {
+            ESM_EXPORT: (exported && isEsm) ? "export " : "",
+            CODE: code
+        }));
     }
 
     let dataClassRegistrations = [];
