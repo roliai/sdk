@@ -465,6 +465,10 @@ export class UserResponse<T extends OkResponseType> {
                 public readonly consoleLog: ConsoleLogProto | undefined) {
     }
 
+    isException() {
+        return typeof this.platformException !== "undefined" || typeof this.exception !== "undefined";
+    }
+
     static createOk<T extends OkResponseType>(response: T, messages: UserMessageUnionWrapperProto[] | undefined, consoleLog: ConsoleLogProto | undefined): UserResponse<T> {
         return new UserResponse<T>(undefined, undefined, response, messages, consoleLog);
     }

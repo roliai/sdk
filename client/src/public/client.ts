@@ -93,7 +93,7 @@ export class InternalClient {
             }
         }
 
-        if (!response.response)
+        if (response.isException())
             throw getErrorForNotOkResponse(logContext, response);
 
         let tracker;
@@ -137,7 +137,7 @@ export class InternalClient {
             tracker = this.trackerFactory.create();
 
         // Get the return value
-        const valueProto = response.response.returnValue(new ValueProto());
+        const valueProto = response.response!.returnValue(new ValueProto());
         if (!valueProto)
             throw new Error(logError(logContext, "Unable to read return value because it contained invalid data"));
         const {
