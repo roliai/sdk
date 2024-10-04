@@ -63,7 +63,7 @@ function getServiceFileContent(baseDir: string, dir: string, ext: string[]): Ser
     return results.sort(compare);
 }
 
-function getChecksum(permissionAssignments: PermissionAssignment[], authorizeAssignments: AuthorizeAssignment[], serviceName: string, serviceFiles: ServiceFileContent[]): number {
+function getServiceChecksum(permissionAssignments: PermissionAssignment[], authorizeAssignments: AuthorizeAssignment[], serviceName: string, serviceFiles: ServiceFileContent[]): number {
     //note: don't need to know which one changed, just that any of them changed.
     let value = 0;
 
@@ -223,16 +223,18 @@ export async function executeDeployService(dir: string,
         const compressedServiceTypeDefinitionsStr = await compressTypeDefinitionFiles(declDir);
         if (!compressedServiceTypeDefinitionsStr) {
             logLocalError('No type definitions emitted from TypeScript');
+            complete = true;
             return false;
         }
 
         const schemaFiles = getServiceFileContent(schemaDir, schemaDir, [".js", ".mjs"]);
         if (!schemaFiles || schemaFiles.length == 0) {
             logLocalError(`No JavaScript files found in ${schemaDir} directory.`);
+            complete = true;
             return false;
         }
 
-        let checksum = getChecksum(permissionAssignments, authorizeAssignments, serviceConfig.name, schemaFiles);
+        let checksum = getServiceChecksum(permissionAssignments, authorizeAssignments, serviceConfig.name, schemaFiles);
 
         const classMappings: ServiceClassMapping[] = [];
         if (serviceConfig.classes.length > 0) {
@@ -248,6 +250,7 @@ export async function executeDeployService(dir: string,
                 }
                 if (!found) {
                     logLocalError(`Invalid class mapping in ${serviceConfig.fullFileName}. The class key ${classTag.name} has an unknown tag. If you're attempting to add a new class, simply delete the extra class key service that file, write your class, and boot like normal. The class mappings will be updated automatically.`);
+                    complete = true;
                     return false;
                 }
             }
@@ -261,6 +264,7 @@ export async function executeDeployService(dir: string,
             if (!hasClassMappingChanges(serviceConfig, classMappings)) {
                 if (log)
                     logOk("No changes found. Use --force  to override.");
+                complete = true;
                 return true;
             }
         }

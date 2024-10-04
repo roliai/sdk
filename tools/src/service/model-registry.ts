@@ -1,9 +1,9 @@
 import {Data, Endpoint, RoliClient, ServiceOptions} from "../client/public";
 import {__Endpoint_InternalClient_Key, internalCreateClient, TypeRegistryBuilder} from "../client/internal";
-import {ServiceKey} from "../client/internal/internal-model-types";
 import {getApiUrl} from "../model/connection-info-file";
 import {GlobalOptions} from "../util/global-options";
 import {AdminServiceAuthorization} from "../util/admin-service-authorization";
+import {RoliEnvironment} from "../model/environment";
 
 // NOTE: This must match what's defined in roli/framework/packages/system/src/roli-system-internal.ts
 const ROLI_MODEL_REGISTRY_CLASS_ID = 1;
@@ -107,7 +107,18 @@ export class ModelRegistration extends Data {
 }
 
 export function createRoliClientAsAdmin(authorization: AdminServiceAuthorization, options?: ServiceOptions): RoliClient {
-    const registryBuilder = new TypeRegistryBuilder();
+    // note: since there is no actual code-gen client for the Model Registry (etc.) the checksum can be anything.
+    const fakeClientChecksum = 1;
+    const env = {
+        clientChecksum: fakeClientChecksum,
+        serviceName: authorization.serviceName,
+        userKey: authorization.adminKey,
+        apiBaseUrl: getApiUrl(),
+        serviceVersionString: authorization.serviceVersionStr,
+        serviceIdString: authorization.serviceIdStr
+    } as RoliEnvironment;
+
+    const registryBuilder = new TypeRegistryBuilder(env, fakeClientChecksum);
 
     options = options ?? {
         enableMessageTracing: GlobalOptions.verbose,
@@ -116,10 +127,7 @@ export function createRoliClientAsAdmin(authorization: AdminServiceAuthorization
     };
 
     // Register the service
-    registryBuilder.registerService(authorization.serviceName, true, authorization.adminKey,
-        authorization.serviceIdStr, authorization.serviceVersionStr);
-
-    const serviceKey = new ServiceKey(authorization.serviceId, authorization.serviceVersion);
+    const serviceKey = registryBuilder.registerService(true);
 
     // Register the ModelRegistry endpoint
     registryBuilder.registerEndpoint(ModelRegistry.name, ModelRegistry, serviceKey, ROLI_MODEL_REGISTRY_CLASS_ID);
@@ -127,8 +135,6 @@ export function createRoliClientAsAdmin(authorization: AdminServiceAuthorization
     // Register the ModelRegistration data object
     registryBuilder.registerData(ModelRegistration.name, ModelRegistration, serviceKey, MODEL_REGISTRATION_CLASS_ID);
 
-    const apiUrl = getApiUrl();
-
     // Create the roli client
-    return internalCreateClient(registryBuilder.build(), apiUrl, options);
+    return internalCreateClient(registryBuilder.build(), options);
 }

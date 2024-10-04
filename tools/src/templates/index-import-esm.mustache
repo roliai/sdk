@@ -1,3 +1,4 @@
 export * from "{{{ROLI_CLIENT_PACKAGE_IMPORT}}}";
+import {checksum} from "./checksum.js";
 import {createUuid, Data, Endpoint, Session, Event} from "{{{ROLI_CLIENT_PACKAGE_IMPORT}}}";
-import {__Session_InternalClient_Key, __Endpoint_InternalClient_Key, TypeRegistryBuilder, internalCreateClient} from "{{{ROLI_CLIENT_PACKAGE_IMPORT}}}/internal";
+import {parseEnvFromKey, __Session_InternalClient_Key, __Endpoint_InternalClient_Key, TypeRegistryBuilder, internalCreateClient} from "{{{ROLI_CLIENT_PACKAGE_IMPORT}}}/internal";

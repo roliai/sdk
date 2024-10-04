@@ -4,41 +4,71 @@ import path from 'path';
 import {Command} from "commander";
 import {AdminSingleton} from "../service/admin";
 import {deserializeServiceIndex} from "../util/deserializer";
-import {createOrUpdateBinding} from "../util/binding-generator";
+import {createOrUpdateClient} from "../util/client-generator";
 import {createLogContext} from "../util/log-context";
 import {
     ClientPackageManager,
-    spawnClientPackageInstaller,
-    guessClientPackageManager
+    guessClientPackageManager,
+    spawnClientPackageInstaller
 } from "../util/shell-package-manager";
 import inquirer from "inquirer";
-import { NpmProjectConfig } from "../model/npm-project-config";
+import {NpmProjectConfig} from "../model/npm-project-config";
 import {authEnabled, loginWithStoredCredentials} from "../service/auth";
 import {addServicePackageDependency} from "../util/package-json.js";
 
 export function createGenerateClientCommand(before: any): Command {
     return new Command('generate-client')
-        .argument("[serviceName]", "The name of the service you wish to generate client code for. If not specified all existing generated clients in a client code project will be updated.")
-        .option("-v, --version <version>", "The deployed version of the service to generate client code for. Left unspecified, the latest service version will be used.")
-        .option("-d, --dir <directory>", "The directory containing a client NPM project that you wish to generate the client in. This wires up the client code to talk to the service.")
-        .option("-ni, --no-install", "Don't ask to run client package installation after generating client code for the first time in a given client code project.")
+        .argument("serviceName", "The name of the service you wish to generate client code for. If not specified all existing generated clients in a client code project will be updated.")
+        .option("--version <version>", "The deployed version of the service to generate client code for. Left unspecified, the latest service version will be used.")
+        .option("--project <directory>", "The directory containing a client NPM project that you wish to generate the client in. This wires up the client code to talk to the service.")
+        .option("--key <file-path>", "Override the default key file name. The file path is relative to the project directory. The name must end with either .txt, .js, .json, or .ts.")
+        .option("--no-install", "Don't ask to run client package installation after generating client code for the first time in a given client code project.")
+        .option("--pnpm", "Override the default package manager, using pnpm without prompting.")
+        .option("--npm", "Override the default package manager, using npm without prompting.")
+        .option("--yarn", "Override the default package manager, using yarn without prompting.")
         .option("--react", "Override React detection and enable Roli React support")
         .description('Generates client code that lets a client NPM project talk to a service hosted on Roli.')
         .action(async function (serviceName: string, opts: any) {
             if (before)
                 before();
 
-            let install = opts.install;
-
-            if (opts.ci) {
-                install = false;
+            let packageManager: ClientPackageManager | null = null;
+            if(!opts.install) {
+                if(opts.pnpm || opts.npm || opts.yarn)
+                {
+                    logLocalError("Cannot specify more than one of --no-install, --pnpm, --npm, or --yarn");
+                    process.exit(1);
+                }
+                packageManager = ClientPackageManager.none;
+            } else {
+                let isSet = false;
+                if(opts.pnpm) {
+                    packageManager = ClientPackageManager.pnpm;
+                    isSet = true;
+                }
+                if(opts.npm) {
+                    if(isSet) {
+                        logLocalError("Cannot specify more than one of --no-install, --pnpm, --npm, or --yarn");
+                        process.exit(1);
+                    }
+                    packageManager = ClientPackageManager.npm;
+                    isSet = true;
+                }
+                if(opts.yarn) {
+                    if(isSet) {
+                        logLocalError("Cannot specify more than one of --no-install, --pnpm, --npm, or --yarn");
+                        process.exit(1);
+                    }
+                    packageManager = ClientPackageManager.yarn;
+                }
             }
 
             if (await executeGenerateClient(
-                opts.dir,
+                packageManager,
+                opts.project,
+                opts.key,
                 serviceName,
                 opts.version,
-                install,
                 true,
                 opts.react)) {
                 process.exit(0);
@@ -71,19 +101,20 @@ async function promptClientPackageInstall(def: ClientPackageManager): Promise<Cl
 }
 
 export async function executeGenerateClient(
-        projectDir: string | null,
-        serviceName: string | null,
-        versionStr: string | null,
-        install: boolean,
-        log: boolean,
-        react: boolean
+    packageManager: ClientPackageManager | null,
+    projectDir: string | null,
+    keyFile: string | null,
+    serviceName: string,
+    versionStr: string | null,
+    log: boolean,
+    react: boolean
     ): Promise<boolean> {
 
     if(authEnabled() && !await loginWithStoredCredentials())
         return false; //already logged
 
-    if(versionStr && !serviceName) {
-        logLocalError("Service name is required when a version is specified.")
+    if(!serviceName) {
+        logLocalError("Service name is required");
         return false;
     }
 
@@ -105,36 +136,23 @@ export async function executeGenerateClient(
         return false; //already logged
     }
 
-    if(!serviceName) {
-        const bindingConfigs = projectConfig.getAllBindingConfigs();
-        if(!bindingConfigs) {
-            logLocalError('No bindings found to update');
+    let version: bigint | null = null;
+    if(versionStr) {
+        version = BigInt(versionStr);
+        if(!version) {
+            logLocalError("Invalid version specified");
             return false;
         }
-    
-        for(const bindingConfig of bindingConfigs) {
-            if(!await generateClient(projectConfig, bindingConfig.serviceName, null, install, log, react))
-                return false; // already logged
-        }
-        
-        return true;
-    } else {
-        let version: bigint | null = null;
-        if(versionStr) {
-            version = BigInt(versionStr);
-            if(!version) {
-                logLocalError("Invalid version specified");
-                return false;
-            }
-        }
-        return await generateClient(projectConfig, serviceName, version, install, log, react);
     }
+    return await generateClient(packageManager, projectConfig, keyFile, serviceName, version, log, react);
 }
+
 async function generateClient(
-    projectConfig: NpmProjectConfig, 
-    serviceName: string, 
+    packageManager: ClientPackageManager | null,
+    projectConfig: NpmProjectConfig,
+    keyFile: string | null,
+    serviceName: string,
     serviceVersion: bigint | null,
-    install: boolean,
     log: boolean,
     forceReact: boolean) : Promise<boolean> {
 
@@ -173,7 +191,7 @@ async function generateClient(
         return false;
     }
 
-    const regenCommand = `roli generate-client . ${serviceName}`;
+    const regenCommand = `roli generate-client -p . ${serviceName}`;
 
     let react = forceReact;
     if(!react && projectConfig.hasReact) {
@@ -182,8 +200,8 @@ async function generateClient(
     }
 
     const {servicePackageName, servicePackageDir, wasUpdate} =
-        await createOrUpdateBinding(logContext, userKey, serviceIndex, regenCommand, projectConfig.loadedFromDir,
-            response.compressedServiceTypeDefinitionsStr, react);
+        await createOrUpdateClient(logContext, userKey, serviceIndex, regenCommand, projectConfig.loadedFromDir,
+            keyFile, response.compressedServiceTypeDefinitionsStr, react);
 
     logVerbose(`Service package code written`);
     addServicePackageDependency(projectConfig.configFile, servicePackageName, servicePackageDir);
@@ -195,23 +213,21 @@ async function generateClient(
     const messagePrefix = wasUpdate ? "An existing" : "A new";
     const updatedOrCreated = wasUpdate ? "updated" : "created";
 
-    if (install) {
-        const cpm = guessClientPackageManager(projectConfig.loadedFromDir);
+    // attempt to guess the package manager
+    if(packageManager === null) {
         console.log(chalk.yellowBright(`Module dependencies must be installed using an appropriate package manager.`));
-        const packageInstaller = await promptClientPackageInstall(cpm);
-        if (packageInstaller) {
-            spawnClientPackageInstaller(packageInstaller, projectConfig.loadedFromDir);
-            if(log)
-                logOk(`${messagePrefix} code generated client was ${updatedOrCreated} ${for_}`);
-        } else {
-            if(log)
-                logOk(`${messagePrefix} code generated client was ${updatedOrCreated} ${for_}`);
-            logWarning("You must install package dependencies before using the generated client code.");
-        }
-    } else {
+        packageManager = await promptClientPackageInstall(guessClientPackageManager(projectConfig.loadedFromDir));
+    }
+
+    // failed to guess or they chose no
+    if(packageManager === null || packageManager === ClientPackageManager.none) {
         if(log)
-            logOk(`A new code generated client was created ${for_}`);
+            logOk(`${messagePrefix} code generated client was ${updatedOrCreated} ${for_}`);
         logWarning("You must install package dependencies before using the generated client code.");
+    } else {
+        spawnClientPackageInstaller(packageManager, projectConfig.loadedFromDir);
+        if(log)
+            logOk(`${messagePrefix} code generated client was ${updatedOrCreated} ${for_}`);
     }
 
     return true;

@@ -1,10 +1,8 @@
 import {requiresTruthy} from "../util/requires";
 import fs, { readdirSync } from "fs";
 import path from "path";
-import {logLocalError, logVerbose, logWarning} from "../util/logging";
-import {parseJsonFromFile} from "../util/json-parse";
+import {logVerbose, logWarning} from "../util/logging";
 import { tryFindAndOpen, tryOpenAndParse } from "../util/config-file";
-import { BINDING_CONFIG_FILE_NAME, BindingConfig, ROLI_BINDING_DIR } from "./binding-config";
 
 export const NPM_PROJECT_CONFIG_FILE_NAME = "package.json";
 
@@ -35,31 +33,6 @@ export class NpmProjectConfig {
 
     public static fileExists(dir: string) {
         return fs.existsSync(getConfigFile(dir));
-    }
-
-    public getAllBindingConfigs() : BindingConfig[] | null {
-        let bindingConfigs: BindingConfig[] = [];
-        
-        const bindingRootDir = path.join(this.loadedFromDir, ROLI_BINDING_DIR);
-        
-        if(fs.existsSync(bindingRootDir)) {
-            const dirs = getDirectories(bindingRootDir);
-            for(const dir of dirs) {
-                const bindingDir = path.join(bindingRootDir, dir);
-                if(BindingConfig.fileExists(bindingDir)) {
-                    const bindingConfig = BindingConfig.tryOpen(bindingDir);
-                    if(bindingConfig) {
-                        bindingConfigs.push(bindingConfig);
-                    }
-                }
-            }
-        }
-
-        if(bindingConfigs.length > 0) {
-            return bindingConfigs;
-        } else {
-            return null;
-        }
     }
 
     static tryOpen(dir: string) : NpmProjectConfig | null {

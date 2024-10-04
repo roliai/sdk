@@ -24,7 +24,6 @@ import {RoliClient, InternalClient} from "../../public/client.js";
 
 export function internalCreateClient(
     typeRegistry: TypeRegistry,
-    apiBaseUrl: string,
     options: ServiceOptions = new ServiceOptions()
 ): RoliClient {
     requiresTruthy('typeRegistry', typeRegistry);
@@ -41,7 +40,7 @@ export function internalCreateClient(
     const responseReader = new ResponseReader(typeRegistry.endpoint, typeRegistry.session, typeRegistry.data, dataContext);
 
     const apiClientFactory = new ApiClientFactory(options.enableMessageTracing, typeRegistry.service,
-        requestFactory, responseReader, apiBaseUrl);
+        requestFactory, responseReader, typeRegistry.env.apiBaseUrl);
 
     const trackerFactory = new TrackerFactory(dataContext, eventContext);
 

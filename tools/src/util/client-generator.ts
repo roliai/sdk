@@ -13,15 +13,15 @@ import {MethodArgumentProto} from "../protocol/method-argument-proto";
 import {FreeClassProto} from "../protocol/free-class-proto";
 import {FreeFunctionProto} from "../protocol/free-function-proto";
 import {BUILD_INFO} from "../config";
-import {ConstructorProto} from "../protocol/constructor-proto";
-import {MethodKindProto} from "../protocol/method-kind-proto";
 import {readBinaryTemplate, readTemplate} from "./template";
 import JSZip from "jszip";
-import {BindingConfig} from "../model/binding-config";
 import {recreateDir} from "./loud-fs";
 import {CallableKindProto} from "../protocol/callable-kind-proto";
 import {changePackageName} from "./package-json.js";
 import {SERVICE_CLIENT_PACKAGE_NAME_MARKER} from "../constants";
+import {encodeBase64} from "./base64";
+import crc32 from "crc-32";
+import {RoliEnvironment} from "../model/environment";
 
 const {version} = require("../package.json");
 
@@ -53,11 +53,75 @@ class GeneratedClient {
     }
 }
 
-function generateClient(logContext: string, isEsm: boolean, userKey: string, apiUrl: string,
-                        serviceIndex: ServiceIndexProto, regenCommand: string, clientPackageName: string): GeneratedClient {
-    requiresTruthy('logContext', logContext);
+function getClientChecksum(client: GeneratedClient): number {
+    // todo: update when more files are supported
+    return crc32.bstr(client.index_js);
+}
+
+function generateKeyFile(logContext: string, keyFormat: KeyFormat, clientChecksum: number, serviceIndex: ServiceIndexProto,
+                         userKey: string, apiUrl: string) : string {
     requiresTruthy('userKey', userKey);
     requiresTruthy('apiUrl', apiUrl);
+
+    let template;
+    switch (keyFormat) {
+        case KeyFormat.ts:
+            template = readTemplate("key-ts.mustache");
+            break;
+        case KeyFormat.txt:
+            template = readTemplate("key-txt.mustache");
+            break;
+        case KeyFormat.json:
+            template = readTemplate("key-json.mustache");
+            break;
+        case KeyFormat.js:
+            template = readTemplate("key-js.mustache");
+            break;
+        case KeyFormat.INVALID:
+            throw new Error("Key format is invalid");
+    }
+    const serviceName = serviceIndex.serviceName();
+
+    if (!serviceName)
+        throw new Error(logRemoteError(logContext, 'Unable to read service index because the name was empty'));
+
+    const serviceId = serviceIndex.serviceId();
+    if (serviceId === BigInt(0))
+        throw new Error(logRemoteError(logContext, 'Unable to read service index because the service id was invalid'));
+
+    const serviceVersion = serviceIndex.serviceVersion();
+    if (serviceVersion === BigInt(0))
+        throw new Error(logRemoteError(logContext, 'Unable to read service index because the service version was invalid'));
+
+    const key = encodeBase64(JSON.stringify({
+        clientChecksum: clientChecksum,
+        apiBaseUrl: apiUrl,
+        serviceName: serviceName,
+        userKey: userKey,
+        serviceIdString: serviceId.toString(),
+        serviceVersionString: serviceVersion.toString()
+    } as RoliEnvironment))
+
+    return Mustache.render(template, {
+        KEY: key
+    });
+}
+
+function generateChecksumFile(isEsm: boolean, clientChecksum: number) : string {
+    requiresTruthy('clientChecksum', clientChecksum);
+    const checksumTemplate = readTemplate(`checksum-${(isEsm ? "esm" : "cjs")}.mustache`);
+    return Mustache.render(checksumTemplate, {
+        CHECKSUM: clientChecksum
+    });
+}
+
+function generateClient(logContext: string, isEsm: boolean,
+                        serviceIndex: ServiceIndexProto,
+                        regenCommand: string,
+                        clientPackageName: string): GeneratedClient {
+
+    requiresTruthy('logContext', logContext);
+
     requiresTruthy('serviceIndex', serviceIndex);
     requiresTruthy('regenCommand', regenCommand);
 
@@ -65,7 +129,6 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
 
     //read in the templates
     const indexTemplate = readTemplate("index.mustache");
-    const serviceRegisterTemplate = readTemplate("service-register.mustache");
     const eventTemplate = readTemplate("event.mustache");
     const eventRegisterTemplate = readTemplate("event-register.mustache");
     const dataTemplate = readTemplate("data.mustache");
@@ -78,25 +141,6 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
     const sessionMethodTemplate = readTemplate("session-method.mustache");
     const freeFunctionTemplate = readTemplate("free-function.mustache");
     const freeClassTemplate = readTemplate("free-class.mustache");
-
-    const serviceName = serviceIndex.serviceName();
-    if (!serviceName)
-        throw new Error(logRemoteError(logContext, 'Unable to read service index because the name was empty'));
-
-    const serviceId = serviceIndex.serviceId();
-    if (serviceId === BigInt(0))
-        throw new Error(logRemoteError(logContext, 'Unable to read service index because the service id was invalid'));
-
-    const serviceVersion = serviceIndex.serviceVersion();
-    if (serviceVersion === BigInt(0))
-        throw new Error(logRemoteError(logContext, 'Unable to read service index because the service version was invalid'));
-
-    let serviceRegistration = Mustache.render(serviceRegisterTemplate, {
-        SERVICE_NAME: serviceName,
-        USER_KEY: userKey,
-        SERVICE_ID: serviceId.toString(),
-        SERVICE_VERSION: serviceVersion.toString()
-    })
 
     let freeFunctions = [];
     for (let i = 0; i < serviceIndex.freeFunctionsLength(); ++i) {
@@ -327,12 +371,10 @@ function generateClient(logContext: string, isEsm: boolean, userKey: string, api
         EVENTS: eventClasses.length > 0 ? eventClasses.join(getClassSeparator()) + getClassSeparator() : "",
         ENDPOINTS: endpointClasses.length > 0 ? endpointClasses.join(getClassSeparator()) + getClassSeparator() : "",
         SESSIONS: sessionClasses.length > 0 ? sessionClasses.join(getClassSeparator()) + getClassSeparator() : "",
-        REGISTER_SERVICE: serviceRegistration + getLineSeparator(),
         REGISTER_ENDPOINTS: endpointClassRegistrations.length > 0 ? endpointClassRegistrations.join(getLineSeparator()) : "",
         REGISTER_SESSIONS: sessionClassRegistrations.length > 0 ? sessionClassRegistrations.join(getLineSeparator()) : "",
         REGISTER_EVENTS: eventClassRegistrations.length > 0 ? eventClassRegistrations.join(getLineSeparator()) : "",
         REGISTER_DATA: dataClassRegistrations.length > 0 ? dataClassRegistrations.join(getLineSeparator()) : "",
-        API_BASE_URL: apiUrl
     });
 
     const package_json = isEsm ?
@@ -425,12 +467,21 @@ async function unzipTemplate(sourceTemplateFile: string, packageDir: string) {
     }
 }
 
-export async function createOrUpdateBinding(
+export enum KeyFormat {
+    INVALID,
+    txt,
+    json,
+    js,
+    ts
+}
+
+export async function createOrUpdateClient(
     logContext: string,
     userKey: string,
     serviceIndex: ServiceIndexProto,
     regenCommand: string,
     projectDir: string,
+    keyFile: string | null,
     compressedServiceTypeDefinitionsStr: string,
     react: boolean
 ):
@@ -438,6 +489,27 @@ export async function createOrUpdateBinding(
 
     if (!fs.existsSync(projectDir)) {
         throw new Error(logLocalError("Destination project directory does not exist."));
+    }
+
+    let keyFormat = KeyFormat.txt;
+    if(keyFile) {
+        const ext = path.extname(keyFile);
+        switch(ext) {
+            case ".ts":
+                keyFormat = KeyFormat.ts;
+                break;
+            case ".txt":
+                keyFormat = KeyFormat.txt;
+                break;
+            case ".json":
+                keyFormat = KeyFormat.json;
+                break;
+            case ".js":
+                keyFormat = KeyFormat.js;
+                break;
+            default:
+                throw new Error(logLocalError(`Invalid key file name: "${ext}" is unsupported.`));
+        }
     }
 
     // Create the package name and the root package
@@ -460,16 +532,13 @@ export async function createOrUpdateBinding(
     if (serviceVersion === BigInt(0))
         throw new Error(logLocalError(`Invalid service version`));
 
+    const clientPackageName = `roli-client-${packageName}`;
 
-    const apiUrl = getApiUrl();
-
-    const clientPackageName = `roli-client-${packageName}-${serviceVersion}`;
-
-    // Generate the CJS client
-    const cjsClient = generateClient(logContext, false, userKey, apiUrl, serviceIndex, regenCommand, clientPackageName);
+        // Generate the CJS client
+    const cjsClient = generateClient(logContext, false, serviceIndex, regenCommand, clientPackageName);
 
     // Generate the ESM client
-    const esmClient = generateClient(logContext, true, userKey, apiUrl, serviceIndex, regenCommand, clientPackageName);
+    const esmClient = generateClient(logContext, true, serviceIndex, regenCommand, clientPackageName);
 
     // create necessary directories
     const relRootPath = ".roli/bindings/" + canonicalServiceName;
@@ -491,7 +560,7 @@ export async function createOrUpdateBinding(
     await unzipTemplate("client.zip", clientDir);
     changePackageName(path.join(clientDir, 'package.json'), clientPackageName);
 
-    const reactPackageName = `roli-react-${packageName}-${serviceVersion}`;
+    const reactPackageName = `roli-react-${packageName}`;
     if (react) {
         const reactDir = path.join(depsDir, reactPackageName);
         fs.mkdirSync(reactDir, {recursive: true});
@@ -499,9 +568,9 @@ export async function createOrUpdateBinding(
         changePackageName(path.join(reactDir, 'package.json'), reactPackageName);
     }
 
-    //write the files
-    const bindingConfig = new BindingConfig(rootDir, canonicalServiceName, serviceVersion);
-    bindingConfig.write();
+    const clientChecksum = getClientChecksum(esmClient);
+    const checksumFileEsm = generateChecksumFile(true, clientChecksum);
+    const checksumFileCjs = generateChecksumFile(false, clientChecksum);
 
     const rootPackage = generateRootPackage(react, packageName, serviceVersion, clientPackageName,
         react ? reactPackageName : undefined);
@@ -509,12 +578,21 @@ export async function createOrUpdateBinding(
     fs.writeFileSync(path.join(rootDir, "package.json"), rootPackage, {encoding: "utf8"})
     fs.writeFileSync(path.join(cjsDir, "package.json"), cjsClient.package_json, {encoding: "utf8"});
     fs.writeFileSync(path.join(cjsDir, "index.js"), cjsClient.index_js, {encoding: "utf8"});
+    fs.writeFileSync(path.join(cjsDir, "checksum.js"), checksumFileCjs, {encoding: "utf8"});
     fs.writeFileSync(path.join(esmDir, "package.json"), esmClient.package_json, {encoding: "utf8"});
     fs.writeFileSync(path.join(esmDir, "index.js"), esmClient.index_js, {encoding: "utf8"});
+    fs.writeFileSync(path.join(esmDir, "checksum.js"), checksumFileEsm, {encoding: "utf8"});
 
     //write the type definitions
     await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, cjsDir, clientPackageName);
     await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, esmDir, clientPackageName);
+
+    // Generate the key json used to set the connection information at runtime.
+    const apiUrl = getApiUrl();
+    const key = generateKeyFile(logContext, keyFormat, clientChecksum, serviceIndex, userKey, apiUrl);
+    const keyFileName = keyFile ?? `${serviceName}-${serviceVersion}-${clientChecksum}.${KeyFormat[keyFormat]}`
+    const keyDir = path.join(projectDir, keyFileName);
+    fs.writeFileSync(keyDir, key, {encoding: "utf8"});
 
     return {servicePackageName: packageName, servicePackageDir: relRootPath, wasUpdate: isUpdate};
 }

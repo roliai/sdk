@@ -29,11 +29,14 @@ import {
 import {__Data_Primary_Key} from "../symbol.js";
 
 export class TypeRegistry {
-    constructor(public readonly service: ServiceRegistry,
+    constructor(
+                public readonly env: RoliEnvironment,
+                public readonly service: ServiceRegistry,
                 public readonly endpoint: EndpointRegistry,
                 public readonly session: SessionRegistry,
                 public readonly data: DataRegistry,
                 public readonly event: EventRegistry) {
+        requiresTruthy('env', env);
         requiresTruthy('service', service);
         requiresTruthy('endpoint', endpoint);
         requiresTruthy('session', session);
@@ -42,15 +45,37 @@ export class TypeRegistry {
     }
 }
 
+// note: This must match RoliEnvironment in roli/framework/public/tools/src/util/client-generator.ts
+interface RoliEnvironment {
+    clientChecksum: number;
+    apiBaseUrl: string;
+    serviceName: string;
+    userKey: string;
+    serviceIdString: string;
+    serviceVersionString: string;
+}
+
+export function parseEnvFromKey(key: string) : RoliEnvironment | null {
+    const envJson = atob(key);
+    const env = JSON.parse(envJson);
+    return env as RoliEnvironment;
+}
+
 export class TypeRegistryBuilder {
     private readonly _service: ServiceRegistryBuilder;
     private readonly _endpoint: EndpointRegistryBuilder;
     private readonly _session: SessionRegistryBuilder;
     private readonly _data: DataRegistryBuilder;
     private readonly _event: EventRegistryBuilder;
+    private readonly _env: RoliEnvironment;
     private _built: boolean = false;
 
-    constructor() {
+    constructor(env: RoliEnvironment, clientChecksum: number) {
+        requiresTruthy('env', env);
+        if(env.clientChecksum !== clientChecksum) {
+            throw new Error(sysLogError("Client checksum mismatch. The key provided is for a different code generated client."));
+        }
+        this._env = env;
         this._service = new ServiceRegistryBuilder();
         this._endpoint = new EndpointRegistryBuilder();
         this._session = new SessionRegistryBuilder();
@@ -58,10 +83,10 @@ export class TypeRegistryBuilder {
         this._event = new EventRegistryBuilder();
     }
 
-    registerService(name: string, admin: boolean, authKey: string, serviceIdString: string, serviceVersionString: string): ServiceKey {
+    registerService(admin: boolean): ServiceKey {
         requiresFalsy("built", this._built);
-        const serviceKey = new ServiceKey(BigInt(serviceIdString), BigInt(serviceVersionString));
-        this._service.register(new ServiceRegistration(name, serviceKey, admin, authKey));
+        const serviceKey = new ServiceKey(BigInt(this._env.serviceIdString), BigInt(this._env.serviceVersionString));
+        this._service.register(new ServiceRegistration(this._env.serviceName, serviceKey, admin, this._env.userKey));
         return serviceKey;
     }
 
@@ -89,6 +114,7 @@ export class TypeRegistryBuilder {
         requiresFalsy("built", this._built);
 
         const registry = new TypeRegistry(
+            this._env,
             this._service.build(),
             this._endpoint.build(),
             this._session.build(),

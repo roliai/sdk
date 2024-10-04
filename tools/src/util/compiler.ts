@@ -167,7 +167,7 @@ function addCreateClientDeclaration(indexDTsFile: string) {
 `export * from \"${SERVICE_CLIENT_PACKAGE_NAME_MARKER}\";
 import { ServiceOptions, RoliClient } from \"${SERVICE_CLIENT_PACKAGE_NAME_MARKER}\";
 ${code}
-export declare function createRoliClient(options?: ServiceOptions) : RoliClient;
+export declare function createRoliClient(key: string, options?: ServiceOptions) : RoliClient;
 `;
 
     fs.writeFileSync(indexDTsFile, c);

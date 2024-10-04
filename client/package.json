@@ -35,7 +35,7 @@
     "typescript": "4.7.2"
   },
   "scripts": {
-    "build": "./build.sh dev debug",
+    "build": "./build.sh managedcloud debug",
     "test": "jest"
   }
 }

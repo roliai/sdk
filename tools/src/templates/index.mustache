@@ -14,14 +14,15 @@
 
 {{{FREE_FUNCTIONS}}}{{{FREE_CLASSES}}}{{{DATA}}}{{{EVENTS}}}{{{ENDPOINTS}}}{{{SESSIONS}}}
 
-{{{ESM_CREATE_CLIENT_EXPORT}}}function createRoliClient(options) {
-    const registryBuilder = new TypeRegistryBuilder();
-{{{REGISTER_SERVICE}}}
+{{{ESM_CREATE_CLIENT_EXPORT}}}function createRoliClient(key, options) {
+    const env = parseEnvFromKey(key);
+    const registryBuilder = new TypeRegistryBuilder(env, checksum);
+    const serviceKey = registryBuilder.registerService(false);
 {{{REGISTER_DATA}}}
 {{{REGISTER_EVENTS}}}
 {{{REGISTER_ENDPOINTS}}}
 {{{REGISTER_SESSIONS}}}
-    return internalCreateClient(registryBuilder.build(), "{{{API_BASE_URL}}}", options);
+    return internalCreateClient(registryBuilder.build(), options);
 }
 
 {{{CJS_EXPORT}}}
