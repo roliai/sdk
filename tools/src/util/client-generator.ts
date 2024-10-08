@@ -12,7 +12,6 @@ import {CallableMethodProto} from "../protocol/callable-method-proto";
 import {MethodArgumentProto} from "../protocol/method-argument-proto";
 import {FreeClassProto} from "../protocol/free-class-proto";
 import {FreeFunctionProto} from "../protocol/free-function-proto";
-import {BUILD_INFO} from "../config";
 import {readBinaryTemplate, readTemplate} from "./template";
 import JSZip from "jszip";
 import {recreateDir} from "./loud-fs";
@@ -22,8 +21,6 @@ import {SERVICE_CLIENT_PACKAGE_NAME_MARKER} from "../constants";
 import {encodeBase64} from "./base64";
 import crc32 from "crc-32";
 import {RoliEnvironment} from "../model/environment";
-
-const {version} = require("../package.json");
 
 const EOL = require('os').EOL;
 
@@ -117,13 +114,11 @@ function generateChecksumFile(isEsm: boolean, clientChecksum: number) : string {
 
 function generateClient(logContext: string, isEsm: boolean,
                         serviceIndex: ServiceIndexProto,
-                        regenCommand: string,
                         clientPackageName: string): GeneratedClient {
 
     requiresTruthy('logContext', logContext);
 
     requiresTruthy('serviceIndex', serviceIndex);
-    requiresTruthy('regenCommand', regenCommand);
 
     const clientExports = ["createRoliClient"];
 
@@ -359,12 +354,9 @@ function generateClient(logContext: string, isEsm: boolean,
     });
 
     const index_js = Mustache.render(indexTemplate, {
-        "BUILD_INFO": BUILD_INFO,
-        ROLI_TOOLS_VERSION: version,
         IMPORT: indexImports,
         CJS_EXPORT: cjsExports,
         ESM_CREATE_CLIENT_EXPORT: isEsm ? "export " : "",
-        REGEN_COMMAND: regenCommand,
         FREE_FUNCTIONS: freeFunctions.length > 0 ? freeFunctions.join(getClassSeparator()) + getClassSeparator() : "",
         FREE_CLASSES: freeClasses.length > 0 ? freeClasses.join(getClassSeparator()) + getClassSeparator() : "",
         DATA: dataClasses.length > 0 ? dataClasses.join(getClassSeparator()) + getClassSeparator() : "",
@@ -532,13 +524,13 @@ export async function createOrUpdateClient(
     if (serviceVersion === BigInt(0))
         throw new Error(logLocalError(`Invalid service version`));
 
-    const clientPackageName = `roli-client-${packageName}`;
+    const clientPackageName = `roli-client`;
 
         // Generate the CJS client
-    const cjsClient = generateClient(logContext, false, serviceIndex, regenCommand, clientPackageName);
+    const cjsClient = generateClient(logContext, false, serviceIndex, clientPackageName);
 
     // Generate the ESM client
-    const esmClient = generateClient(logContext, true, serviceIndex, regenCommand, clientPackageName);
+    const esmClient = generateClient(logContext, true, serviceIndex, clientPackageName);
 
     // create necessary directories
     const relRootPath = ".roli/bindings/" + canonicalServiceName;
@@ -560,7 +552,7 @@ export async function createOrUpdateClient(
     await unzipTemplate("client.zip", clientDir);
     changePackageName(path.join(clientDir, 'package.json'), clientPackageName);
 
-    const reactPackageName = `roli-react-${packageName}`;
+    const reactPackageName = `roli-react`;
     if (react) {
         const reactDir = path.join(depsDir, reactPackageName);
         fs.mkdirSync(reactDir, {recursive: true});

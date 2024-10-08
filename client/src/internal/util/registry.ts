@@ -329,7 +329,7 @@ export class ServiceRegistry {
         if (expected.serviceId === other.serviceId) {
             //the version has changed, making this client incompatible.
             const service_name = this.getName(expected);
-            throw new Error(sysLogError(`The service client for ${service_name} is out of date and must be re-generated.`));
+            throw new Error(sysLogError(`The service client for ${service_name} is out of date and must be re-generated. Debug: ${expected.value} !== ${other.value}`));
         }
 
         if (this.isRegistered(other)) {
