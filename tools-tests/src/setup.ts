@@ -38,6 +38,7 @@ import {
 import { DEFAULT_ADMIN_SERVICE_BASE_URL, DEFAULT_API_SERVICE_BASE_URL, IS_ENTERPRISE_EDITION } from "./config";
 import {tryOpenAndParse} from "roli-tools/util/config-file";
 import {deepCompare, isLoggedIn, LOGIN_FILE} from "./util/util";
+import { ClientPackageManager } from "roli-tools/util/shell-package-manager";
 
 GlobalOptions.verbose = true;
 
@@ -274,7 +275,7 @@ async function setupService(clientRunDir: string, serviceName: string, specificV
     //Connect the service
     console.log(`== executeConnect(clientRunDir: ${clientRunDir} , serviceName: ${serviceName} ...)`)
     const versionStr = specificVersion ? String("1") : null;
-    if (!await executeGenerateClient(clientRunDir, serviceName, versionStr, false, true, false))
+    if (!await executeGenerateClient(ClientPackageManager.none, clientRunDir, serviceName, versionStr, true, true))
         throw new Error("connect failed");
 }
 

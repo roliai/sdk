@@ -3,7 +3,7 @@ let ENDPOINT;
 async function suite() {
     setLogPrefix("[suite]");
     
-    const client = createRoliClient(new ServiceOptions(true, true, getLogPrefix()));
+    const client = createRoliClient(key, new ServiceOptions(true, true, getLogPrefix()));
 
     await test('Can create Endpoint', async function () {
         ENDPOINT = client.getEndpoint(MemoryCapEndpoint, "default");

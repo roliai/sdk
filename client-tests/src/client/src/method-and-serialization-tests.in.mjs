@@ -4,7 +4,7 @@ async function suite(targetType, isEndpoint) {
     
     let target;
     
-    const client = createRoliClient(new ServiceOptions(true, true, getLogPrefix()));   
+    const client = createRoliClient(key, new ServiceOptions(true, true, getLogPrefix()));   
 
     if(isEndpoint) {
         await test('Can get Endpoint as target', async function () {

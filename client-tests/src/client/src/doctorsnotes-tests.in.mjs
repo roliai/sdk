@@ -6,7 +6,7 @@ const DEFAULT_ENDPOINT = "default";
 async function suite() {
     setLogPrefix("[suite]");
     
-    CLIENT = createRoliClient(new ServiceOptions(true, true, getLogPrefix()));
+    CLIENT = createRoliClient(key, new ServiceOptions(true, true, getLogPrefix()));
 
     await test('Can create Api Endpoint', async function () {
         ENDPOINT = CLIENT.getEndpoint(Api, DEFAULT_ENDPOINT);

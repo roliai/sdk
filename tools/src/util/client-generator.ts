@@ -55,28 +55,15 @@ function getClientChecksum(client: GeneratedClient): number {
     return crc32.bstr(client.index_js);
 }
 
-function generateKeyFile(logContext: string, keyFormat: KeyFormat, clientChecksum: number, serviceIndex: ServiceIndexProto,
+function generateKeyFile(logContext: string, isEsm: boolean, clientChecksum: number, serviceIndex: ServiceIndexProto,
                          userKey: string, apiUrl: string) : string {
     requiresTruthy('userKey', userKey);
     requiresTruthy('apiUrl', apiUrl);
 
-    let template;
-    switch (keyFormat) {
-        case KeyFormat.ts:
-            template = readTemplate("key-ts.mustache");
-            break;
-        case KeyFormat.txt:
-            template = readTemplate("key-txt.mustache");
-            break;
-        case KeyFormat.json:
-            template = readTemplate("key-json.mustache");
-            break;
-        case KeyFormat.js:
-            template = readTemplate("key-js.mustache");
-            break;
-        case KeyFormat.INVALID:
-            throw new Error("Key format is invalid");
-    }
+    const template = isEsm ? 
+        readTemplate("key-esm.mustache") : 
+        readTemplate("key-cjs.mustache");
+
     const serviceName = serviceIndex.serviceName();
 
     if (!serviceName)
@@ -459,13 +446,6 @@ async function unzipTemplate(sourceTemplateFile: string, packageDir: string) {
     }
 }
 
-export enum KeyFormat {
-    INVALID,
-    txt,
-    json,
-    js,
-    ts
-}
 
 export async function createOrUpdateClient(
     logContext: string,
@@ -473,7 +453,6 @@ export async function createOrUpdateClient(
     serviceIndex: ServiceIndexProto,
     regenCommand: string,
     projectDir: string,
-    keyFile: string | null,
     compressedServiceTypeDefinitionsStr: string,
     react: boolean
 ):
@@ -481,27 +460,6 @@ export async function createOrUpdateClient(
 
     if (!fs.existsSync(projectDir)) {
         throw new Error(logLocalError("Destination project directory does not exist."));
-    }
-
-    let keyFormat = KeyFormat.txt;
-    if(keyFile) {
-        const ext = path.extname(keyFile);
-        switch(ext) {
-            case ".ts":
-                keyFormat = KeyFormat.ts;
-                break;
-            case ".txt":
-                keyFormat = KeyFormat.txt;
-                break;
-            case ".json":
-                keyFormat = KeyFormat.json;
-                break;
-            case ".js":
-                keyFormat = KeyFormat.js;
-                break;
-            default:
-                throw new Error(logLocalError(`Invalid key file name: "${ext}" is unsupported.`));
-        }
     }
 
     // Create the package name and the root package
@@ -579,12 +537,15 @@ export async function createOrUpdateClient(
     await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, cjsDir, clientPackageName);
     await writeTypeDefinitions(compressedServiceTypeDefinitionsStr, esmDir, clientPackageName);
 
-    // Generate the key json used to set the connection information at runtime.
+    // Generate the key used to set the connection information at runtime.
     const apiUrl = getApiUrl();
-    const key = generateKeyFile(logContext, keyFormat, clientChecksum, serviceIndex, userKey, apiUrl);
-    const keyFileName = keyFile ?? `${serviceName}-${serviceVersion}-${clientChecksum}.${KeyFormat[keyFormat]}`
-    const keyDir = path.join(projectDir, keyFileName);
-    fs.writeFileSync(keyDir, key, {encoding: "utf8"});
+    const keyFile = "key.js";
+    
+    fs.writeFileSync(path.join(cjsDir, keyFile), 
+        generateKeyFile(logContext, false, clientChecksum, serviceIndex, userKey, apiUrl), {encoding: "utf8"});
+    
+    fs.writeFileSync(path.join(esmDir, keyFile), 
+        generateKeyFile(logContext, true, clientChecksum, serviceIndex, userKey, apiUrl), {encoding: "utf8"});
 
     return {servicePackageName: packageName, servicePackageDir: relRootPath, wasUpdate: isUpdate};
 }

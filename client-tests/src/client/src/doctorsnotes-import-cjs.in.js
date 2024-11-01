@@ -1,3 +1,4 @@
 const {createRoliClient, Api, ServiceOptions, PlatformError} = require("doctorsnotes-service");
 const {test, run, setLogPrefix, getLogPrefix} = require("./single-runner.js");
-const {assert} = require("./assert.js");;
+const {assert} = require("./assert.js");
+const {key} = require("doctorsnotes-service/key");

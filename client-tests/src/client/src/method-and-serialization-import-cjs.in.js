@@ -3,3 +3,4 @@ const t = require("./single-runner.js");
 const {test, run, setLogPrefix, getLogPrefix} = t;
 const a = require("./assert.js");
 const {assert} = a;
+const {key} = require("method-and-serialization-service/key");

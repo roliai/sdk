@@ -21,7 +21,6 @@ export function createGenerateClientCommand(before: any): Command {
         .argument("serviceName", "The name of the service you wish to generate client code for. If not specified all existing generated clients in a client code project will be updated.")
         .option("--version <version>", "The deployed version of the service to generate client code for. Left unspecified, the latest service version will be used.")
         .option("--project <directory>", "The directory containing a client NPM project that you wish to generate the client in. This wires up the client code to talk to the service.")
-        .option("--key <file-path>", "Override the default key file name. The file path is relative to the project directory. The name must end with either .txt, .js, .json, or .ts.")
         .option("--no-install", "Don't ask to run client package installation after generating client code for the first time in a given client code project.")
         .option("--pnpm", "Override the default package manager, using pnpm without prompting.")
         .option("--npm", "Override the default package manager, using npm without prompting.")
@@ -66,7 +65,6 @@ export function createGenerateClientCommand(before: any): Command {
             if (await executeGenerateClient(
                 packageManager,
                 opts.project,
-                opts.key,
                 serviceName,
                 opts.version,
                 true,
@@ -103,7 +101,6 @@ async function promptClientPackageInstall(def: ClientPackageManager): Promise<Cl
 export async function executeGenerateClient(
     packageManager: ClientPackageManager | null,
     projectDir: string | null,
-    keyFile: string | null,
     serviceName: string,
     versionStr: string | null,
     log: boolean,
@@ -144,13 +141,12 @@ export async function executeGenerateClient(
             return false;
         }
     }
-    return await generateClient(packageManager, projectConfig, keyFile, serviceName, version, log, react);
+    return await generateClient(packageManager, projectConfig, serviceName, version, log, react);
 }
 
 async function generateClient(
     packageManager: ClientPackageManager | null,
     projectConfig: NpmProjectConfig,
-    keyFile: string | null,
     serviceName: string,
     serviceVersion: bigint | null,
     log: boolean,
@@ -191,7 +187,7 @@ async function generateClient(
         return false;
     }
 
-    const regenCommand = `roli generate-client -p . ${serviceName}`;
+    const regenCommand = `roli generate-client --project . ${serviceName}`;
 
     let react = forceReact;
     if(!react && projectConfig.hasReact) {
@@ -201,7 +197,7 @@ async function generateClient(
 
     const {servicePackageName, servicePackageDir, wasUpdate} =
         await createOrUpdateClient(logContext, userKey, serviceIndex, regenCommand, projectConfig.loadedFromDir,
-            keyFile, response.compressedServiceTypeDefinitionsStr, react);
+             response.compressedServiceTypeDefinitionsStr, react);
 
     logVerbose(`Service package code written`);
     addServicePackageDependency(projectConfig.configFile, servicePackageName, servicePackageDir);

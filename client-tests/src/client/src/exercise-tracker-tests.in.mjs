@@ -9,7 +9,7 @@ const UPDATE_RECEIVED_SLEEP_MS = 1000;
 
 async function suite0() {
     setLogPrefix("[suite0======]");
-    const client = createRoliClient(new ServiceOptions(true, true, getLogPrefix()));
+    const client = createRoliClient(key, new ServiceOptions(true, true, getLogPrefix()));
 
     await test('Can round-trip user without unsaved changes error', async function () {
         const endpoint = client.getEndpoint(ExerciseTrackerEndpoint, createUuid(false));
@@ -131,7 +131,7 @@ async function suite0() {
 async function suite1() {
     setLogPrefix("[======suite1]");
 
-    const client = createRoliClient(new ServiceOptions(true, true, getLogPrefix()));
+    const client = createRoliClient(key, new ServiceOptions(true, true, getLogPrefix()));
 
     await test('Can get endpoint', async function () {
         ENDPOINT = client.getEndpoint(ExerciseTrackerEndpoint, "default");
