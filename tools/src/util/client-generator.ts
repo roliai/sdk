@@ -547,5 +547,11 @@ export async function createOrUpdateClient(
     fs.writeFileSync(path.join(esmDir, keyFile), 
         generateKeyFile(logContext, true, clientChecksum, serviceIndex, userKey, apiUrl), {encoding: "utf8"});
 
+    const keyDtsFile = "key.d.ts";
+    const keyDts = readTemplate("key.d.ts");
+
+    fs.writeFileSync(path.join(esmDir, keyDtsFile), keyDts, {encoding: "utf8"});
+    fs.writeFileSync(path.join(cjsDir, keyDtsFile), keyDts, {encoding: "utf8"});
+
     return {servicePackageName: packageName, servicePackageDir: relRootPath, wasUpdate: isUpdate};
 }
