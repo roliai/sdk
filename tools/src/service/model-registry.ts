@@ -39,7 +39,9 @@ export function validateModelSpecification(model: any) {
         throw new Error(baseError + "Missing model settings kind");
 
     switch (model.settings.kind) {
-        case 'chat-model':
+        case 'openai':
+            break;
+        case 'ollama':
             break;
         default:
             throw new Error(baseError + "Unsupported model kind.")
