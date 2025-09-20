@@ -5,7 +5,6 @@ cd $(dirname "${0}")
 cd ..
 
 scripts/sync-exercise-tracker.sh
-scripts/sync-doctorsnotes.sh
 scripts/sync-method-and-serialization.sh
 
 rm -rf dist

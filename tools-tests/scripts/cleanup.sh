@@ -7,7 +7,6 @@ cd ..
 WORKED_STRING="All tests completed successfully"
 
 scripts/sync-exercise-tracker.sh
-scripts/sync-doctorsnotes.sh
 
 rm -rf dist
 
