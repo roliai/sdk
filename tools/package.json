@@ -3,7 +3,7 @@
   "private": "true",
   "main": "roli.js",
   "scripts": {
-    "build": "./build.sh managedcloud debug",
+    "build": "./build.sh dev debug",
     "deploy-service": "node ./dist/roli.js deploy-service -d /home/scott/b2c/service --force",
     "generate-client": "node ./dist/roli.js generate-client -d /home/scott/b2c/client tasks"
   },
@@ -22,10 +22,10 @@
   "devDependencies": {
     "@types/cli-progress": "^3.11.0",
     "@types/degit": "^2.8.3",
-    "@types/figlet": "^1.2.0",
+    "@types/figlet": "^1.7.0",
     "@types/inquirer": "^6.5.0",
     "@types/mustache": "^4.0.1",
-    "@types/node": "^18.11.17",
+    "@types/node": "^24.5.2",
     "@types/node-emoji": "^1.8.1",
     "rimraf": "^3.0.2",
     "ts-node": "^9.0.0",
@@ -47,7 +47,7 @@
     "commander": "^9.4.0",
     "crc-32": "^1.2.0",
     "cross-fetch": "^3.1.5",
-    "figlet": "^1.4.0",
+    "figlet": "^1.9.3",
     "firebase": "^9.8.2",
     "flatbuffers": "24.3.25",
     "inquirer": "^7.1.0",
@@ -55,7 +55,7 @@
     "mustache": "^4.0.1",
     "open": "^8.4.2",
     "path": "^0.12.7",
-    "typescript": "4.7.2",
+    "typescript": "5.9.2",
     "lodash": "^4.17.21",
     "websocket": "^1.0.34"
   }

@@ -237,7 +237,7 @@ const ClassHasPermissionsDecorator = new Set();
 export function CreateStageTransformer(permissionAssignments: PermissionAssignment[],
                                        authorizeAssignments: AuthorizeAssignment[]) {
     return (program: ts.Program) => {
-        const transformerFactory: ts.TransformerFactory<ts.SourceFile> = context => {
+        const transformerFactory: (context: any) => (sourceFile: ts.SourceFile) => ts.Node | (ts.Node & undefined) = context => {
             return (sourceFile: ts.SourceFile) => {
                 const visitor = (node: ts.Node): ts.Node => {
 
@@ -368,7 +368,7 @@ export function CreateStageTransformer(permissionAssignments: PermissionAssignme
 
 
 export const ClientDeclTransformer = (program: ts.Program) => {
-    const transformerFactory: ts.TransformerFactory<ts.SourceFile> = context => {
+    const transformerFactory: (context: any) => (sourceFile: SourceFile) => ts.Node | (ts.Node & undefined) = context => {
         return sourceFile => {
             const visitor = (node: ts.Node): ts.Node => {
                 // Change roli imports to import roli-client instead.
@@ -406,7 +406,6 @@ export const ClientDeclTransformer = (program: ts.Program) => {
 
                     return context.factory.updateMethodDeclaration(
                         method,
-                        method.decorators,
                         method.modifiers,
                         method.asteriskToken,
                         // From the client's perspective, it's an Async call.
@@ -467,7 +466,7 @@ function tryGetBaseClass(baseClassNames: string | string[], node: ts.Node): stri
 }
 
 export const JavaScriptServiceExecutionTransformer = (program: ts.Program) => {
-    const transformerFactory: ts.TransformerFactory<ts.SourceFile> = context => {
+    const transformerFactory: (context: any) => (sourceFile: SourceFile) => ts.Node | (ts.Node & undefined) = context => {
         return sourceFile => {
             const visitor = (node: ts.Node): ts.Node => {
 
